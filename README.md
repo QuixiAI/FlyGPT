@@ -48,6 +48,23 @@ minimum synapse threshold
 region breakdown of selected neurons
 ```
 
+### License and citation
+
+The MaleCNS v1.0 dataset is released by the FlyEM Project Team (HHMI Janelia), the University of Cambridge
+(Dept. of Zoology), the MRC Laboratory of Molecular Biology, and Google Research under **CC-BY 4.0**
+(https://male-cns.janelia.org/download/). FlyGPT reads the official flat-connectome release files from
+`gs://flyem-male-cns/v1.0/connectome-data/flat-connectome/` (md5-verified; see `data/fly/fetch_malecns.py`).
+The neuPrint dataset name for the same release is `male-cns:v1.0`.
+
+If you use FlyGPT's graph, cite the dataset paper:
+
+> Berg, S., Beckett, I. R., Costa, M., Schlegel, P., Januszewski, M., Marin, E. C., Nern, A., Preibisch, S., et al. (2026).
+> Sexual dimorphism in the complete *Drosophila* male central nervous system connectome. *Cell* 189, 5504–5526.e15.
+> https://doi.org/10.1016/j.cell.2026.08.015 (preprint: bioRxiv https://doi.org/10.1101/2025.10.09.680999)
+
+The "weights" in the release are anatomical synapse counts, not learned parameters; FlyGPT uses the directed edge set as
+the architecture and trains its own value per retained edge.
+
 ---
 
 ## 2. Dataset

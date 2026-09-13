@@ -76,9 +76,8 @@ uv venv && uv pip install -e ".[dev]"
 pytest                                                  # sparse/dense, gradient reach, controls, gate, claim rule, e2e
 
 python prepare_data.py                                  # split.json + reference losses
-export NEUPRINT_TOKEN=...                               # neuprint.janelia.org -> Account
-python data/fly/fetch_malecns.py                        # raw tables
-python data/fly/build_edges.py --region-column <col>    # check the printed region breakdown
+python data/fly/fetch_malecns.py                        # official bulk files -> data/fly/raw/ (md5-verified; --neuprint for the API)
+python data/fly/build_edges.py --region-column superclass   # check the printed superclass -> region crosstab
 python build_graph.py configs/dev_1k.yaml               # must print "all gates passed"
 python train.py configs/dev_1k.yaml --condition frozen  # reservoir gate: must beat bigram
 python train.py configs/dev_1k.yaml --condition real    # 1k overfit gate

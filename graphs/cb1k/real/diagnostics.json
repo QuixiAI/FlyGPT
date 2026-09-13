@@ -1,0 +1,30 @@
+{
+  "provenance": {
+    "control": "real"
+  },
+  "io": {
+    "n_input": 64,
+    "n_output": 128,
+    "input_rule": "top_out_degree",
+    "output_rule": "top_in_degree",
+    "overlap": 44
+  },
+  "diagnostics": {
+    "n_neurons": 1000,
+    "n_edges": 73974,
+    "largest_scc_fraction": 1.0,
+    "reciprocal_pairs": 22842,
+    "io_reachable_fraction": 1.0,
+    "io_path_median": 1.0,
+    "io_path_p90": 1.0,
+    "io_path_max": 2.0
+  },
+  "gate": {
+    "microsteps": 2,
+    "max_p90_hops": 6,
+    "min_reachable_fraction": 0.95,
+    "reachable_ok": true,
+    "p90_ok": true,
+    "passed": true
+  }
+}

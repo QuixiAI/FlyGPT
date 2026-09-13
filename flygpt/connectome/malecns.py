@@ -8,10 +8,10 @@ and the two derived files this module reads:
     data/fly/neurons.parquet  body_id, type, instance, region
     data/fly/edges.parquet    src, dst, weight
 
-TODO before anything ships: record the MaleCNS v1.0 license and citation in README.md.
-TODO: confirm which annotation column distinguishes central brain from VNC in the v1.0
-release, and encode the mapping in `region_of()`. Until then, `central_brain` filtering
-raises so a wrong pool cannot silently become "the fly brain".
+License and citation: README §1 (CC-BY 4.0; Berg et al. 2026, Cell). Region column: `superclass`
+(cb_* = central brain, vnc_* = ventral nerve cord, ol_* = optic lobe); the mapping lives in
+data/fly/build_edges.py and is logged there. `central_brain` filtering still raises when the
+derived neurons.parquet has no `region` column so a wrong pool cannot silently become "the fly brain".
 """
 from __future__ import annotations
 
