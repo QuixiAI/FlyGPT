@@ -1,14 +1,14 @@
 .venv/
 __pycache__/
 *.pyc
-.pytest_cache/
-data/shakespeare/*
-!data/shakespeare/download.sh
-data/fly/*
-!data/fly/fetch_malecns.py
-!data/fly/build_edges.py
-checkpoints/*
-!checkpoints/.gitkeep
-runs/*
-!runs/.gitkeep
 *.egg-info/
+.pytest_cache/
+# corpus is re-downloadable; split.json is committed
+data/shakespeare/input.txt
+# raw and derived MaleCNS tables
+data/fly/*.parquet
+# graph artifacts: ids/config/hash/stats/diagnostics are committed, edge tensors are not
+graphs/**/*.pt
+checkpoints/
+runs/
+results/*.png

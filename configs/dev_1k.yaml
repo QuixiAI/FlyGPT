@@ -1,0 +1,50 @@
+# README §15 "Before 1k -> 5k" gate: 1k RealFly must overfit a small Shakespeare excerpt to near-memorization.
+# Identical to launch.yaml except target size, corpus truncation, and run length.
+project: flygpt-dev
+graph_name: cb1k
+
+dataset:
+  name: tiny_shakespeare
+  path: data/shakespeare/input.txt
+  split: 0.90
+  max_chars: 5000               # small excerpt; the point is memorization
+
+graph:
+  source: malecns-v1.0
+  edges_path: data/fly/edges.parquet
+  neurons_path: data/fly/neurons.parquet
+  region_filter: central_brain
+  target_neurons: 1000
+  min_synapses: 3
+  selector: directed_core
+  retain_largest_scc: true
+
+controls: [real]
+
+interface:
+  input_nodes: 64
+  input_rule: top_out_degree
+  output_nodes: 128
+  output_rule: top_in_degree
+
+model:
+  learned_leak: true
+  leak_init: 0.5
+  degree_normalization: true
+  embed_dim: 32
+
+sequence:
+  context: 64
+  microsteps: 2
+
+training:
+  recurrent_lr: 0.001
+  adapter_lr: 0.001
+  batch_size: 16
+  steps: 3000
+  eval_every: 100
+
+evaluation:
+  seeds_dev: [1]
+  seeds_claim: [1]
+  generation_fractions: [0.0, 0.25, 0.5, 1.0]

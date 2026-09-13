@@ -1,1070 +1,482 @@
-# FlyGPT
+# FlyGPT 🪰 — Spec v4 (frozen)
 
-## Train a Fruit-Fly Connectome to Write Shakespeare
+## Can a Fruit-Fly Connectome Learn to Write Shakespeare?
 
-### Project goal
+---
 
-Build a real language model whose recurrent core is derived from the fruit-fly connectome, train it from scratch on Tiny Shakespeare, and produce a demo people instantly understand.
+## 0. Objective
 
-The central question is:
+Build a character-level language model trained from scratch on Tiny Shakespeare whose recurrent connectivity is constrained by the wiring diagram of a real fruit-fly nervous system.
+
+The viral question:
 
 > **Can a fruit-fly connectome learn to write Shakespeare?**
 
-The project is optimized for:
+The stronger result:
 
-* fast iteration;
-* visible results;
-* technically honest claims;
-* compelling generated text;
-* a strong visual demo;
-* easy comparison against a scrambled control;
-* a launch story that fits in one post or short video.
+> **Does the real fly wiring learn better than the same neurons, same edges, same degrees, with the connections scrambled?**
 
-The primary success condition is **not publication-quality biological fidelity**.
+The project optimizes for, in order:
 
-The primary success condition is:
+1. a working model and genuine generated text quickly;
+2. a comparison that survives obvious criticism;
+3. a result that is visually understandable;
+4. public claims that are technically defensible.
 
-> We can type `ROMEO:` into a model built around a real fruit-fly wiring graph and get recognizably Shakespeare-like text back.
+### Core principle
 
----
+> **Don't accidentally cripple the fly and then call its failure a result — and don't accidentally favor the fly and then call its win a result.**
 
-# 1. Viral claim hierarchy
-
-The strongest claim we can honestly earn is:
-
-> **I trained a fruit-fly brain to write Shakespeare.**
-
-More precise supporting line:
-
-> The model uses the wiring topology of a real fruit-fly nervous system as its recurrent neural architecture.
-
-Even stronger, if the control works:
-
-> **The real fly wiring learned language better than the same network after I scrambled its brain.**
-
-That is the ideal result.
+Both failure modes are addressed by design decisions in this spec, not by post-hoc cleanup.
 
 ---
 
-# 2. What we are actually building
+## 1. Data source: MaleCNS v1.0
 
-Pipeline:
+Use the official MaleCNS v1.0 release (neuron annotations, segment-to-segment connection graph with synapse counts, per-neuron and per-synapse neurotransmitter predictions, neuPrint access).
 
-```text
-character
-   ↓
-learned input embedding
-   ↓
-selected fly neurons
-   ↓
-trainable recurrent fly-connectome graph
-   ↓
-selected output neurons
-   ↓
-linear readout
-   ↓
-next-character prediction
-```
+**Before anything ships:** confirm the data license and required citation, and include both in the README.
 
-The graph determines **which neurons may communicate**.
-
-Training determines **the strength of those connections**.
-
-We are not trying to simulate the full biophysics of a living fly.
-
-We are using the connectome as a sparse recurrent neural-network architecture.
-
----
-
-# 3. Dataset
-
-Use Tiny Shakespeare.
-
-Character-level language modeling.
-
-Vocabulary:
+**Do not hard-code edge-count or neuron-count claims.** Every number describing the graph is produced by the preprocessing script and logged:
 
 ```text
-~65 characters
-```
-
-Task:
-
-```text
-given previous characters
-predict next character
-```
-
-Example:
-
-```text
-ROMEO:
-But soft, what light...
-```
-
-The advantage of Tiny Shakespeare is that:
-
-* it is tiny;
-* training is fast;
-* character-level modeling avoids tokenizer complexity;
-* generated output is easy to judge visually;
-* Karpathy has made it culturally recognizable in AI circles.
-
----
-
-# 4. First architecture
-
-Do not begin with the entire fly nervous system.
-
-Start with a real connected subgraph.
-
-### V0 target
-
-```text
-5,000–10,000 neurons
-```
-
-with enough recurrent connectivity to be interesting.
-
-Each biological neuron becomes one scalar recurrent unit.
-
-For neuron `i`:
-
-```text
-h_i = scalar hidden state
-```
-
-Each real directed neuron-to-neuron connection becomes one trainable weight.
-
-Update:
-
-```text
-new_state_i =
-tanh(
-    recurrent_input_i
-    + character_input_i
-    + bias_i
-)
-```
-
-Optionally include a simple residual/leak:
-
-```text
-h_new =
-(1 - leak) * h_old
-+ leak * tanh(...)
-```
-
-Keep it simple until it works.
-
----
-
-# 5. Biological fidelity rules
-
-For V0, preserve:
-
-* actual neuron nodes;
-* actual directed connectivity;
-* actual graph sparsity.
-
-Do not initially require:
-
-* biological neurotransmitter signs;
-* spiking neurons;
-* synaptic delays;
-* membrane potentials;
-* neuromodulators;
-* exact synaptic strength;
-* biologically accurate learning rules.
-
-Those are later experiments.
-
-The key claim is:
-
-> **The architecture comes from the fly connectome.**
-
-Not:
-
-> **This is a perfect simulation of a fly brain.**
-
----
-
-# 6. Input interface
-
-Characters must enter the graph somehow.
-
-Use:
-
-```text
-65-character vocabulary
-        ↓
-small learned embedding
-        ↓
-projection into K input neurons
-```
-
-V0:
-
-```text
-embedding_dim = 32 or 64
-K_input = 256–1024
-```
-
-The input adapter should remain tiny compared with the recurrent graph.
-
-For the first version, choose input neurons using a deterministic rule.
-
-Possible options:
-
-```text
-random fixed neurons
-high-influence nodes
-annotated sensory neurons
-```
-
-The fastest option wins initially.
-
-Later compare biological sensory nodes against random interface nodes.
-
----
-
-# 7. Output interface
-
-Select:
-
-```text
-512–4096 output neurons
-```
-
-Read their hidden states.
-
-Then:
-
-```text
-selected states
-      ↓
-linear layer
-      ↓
-65 logits
-```
-
-Softmax gives the next-character distribution.
-
-Again, keep the readout small.
-
----
-
-# 8. Temporal model
-
-The fly graph is recurrent.
-
-For every character:
-
-```text
-inject character
-      ↓
-run graph update
-      ↓
-predict next character
-      ↓
-retain hidden state
-```
-
-Initially:
-
-```text
-1 graph update per character
-```
-
-If information propagation is too weak:
-
-```text
-2
-4
-```
-
-microsteps per character.
-
-Do not add complexity unless needed.
-
----
-
-# 9. Training objective
-
-Standard next-character cross-entropy.
-
-No Qwen.
-
-No distillation.
-
-No pretrained embeddings.
-
-No language model teacher.
-
-That makes the result much cleaner:
-
-> **The fly learned Shakespeare directly from Shakespeare.**
-
----
-
-# 10. Training stack
-
-Use PyTorch.
-
-Recommended starting setup:
-
-```text
-optimizer: AdamW
-precision: BF16 if available
-gradient clipping: 1.0
-context length: 64
-batch size: whatever fits
-learning rate: ~3e-4 recurrent
-learning rate: ~1e-3 adapters
-```
-
-Use truncated backpropagation through time.
-
-Start with:
-
-```text
-sequence length = 64
-```
-
-Then move toward:
-
-```text
-128
-256
-```
-
-only after training is stable.
-
----
-
-# 11. Implementation priority
-
-The only thing that matters initially is:
-
-> **Can the graph learn?**
-
-Do not spend days optimizing kernels before proving that.
-
-First implementation can use:
-
-* edge list;
-* source indices;
-* destination indices;
-* trainable edge weights;
-* scatter-add message passing.
-
-Conceptually:
-
-```python
-messages = state[src] * edge_weight
-incoming = scatter_add(messages, dst)
-new_state = tanh(incoming + input)
-```
-
-Batch dimension comes later if necessary.
-
-Correctness first.
-
-Speed second.
-
----
-
-# 12. Build order
-
-## Step 1 — Tiny synthetic graph
-
-Before touching the fly:
-
-```text
-100–500 units
-```
-
-Train it on:
-
-* repeated sequences;
-* delayed-copy tasks;
-* tiny text.
-
-Goal:
-
-Confirm recurrent training and gradients work.
-
-Time spent here should be minimal.
-
----
-
-## Step 2 — Tiny fly graph
-
-Take:
-
-```text
-~1,000 real fly neurons
-```
-
-Train on a tiny Shakespeare excerpt.
-
-Goal:
-
-**Overfit it.**
-
-Success looks like:
-
-```text
-training loss → very low
-```
-
-and generated text reproduces the training pattern.
-
-If this fails, debug before scaling.
-
----
-
-## Step 3 — FlyGPT V0
-
-Scale to:
-
-```text
-5k–10k real fly neurons
-```
-
-Dataset:
-
-```text
-Tiny Shakespeare
-```
-
-Train from scratch.
-
-Goal:
-
-Validation loss falls and generated text becomes recognizably language-like.
-
-This is the first potentially shareable milestone.
-
----
-
-# 13. First viral checkpoint
-
-As soon as output starts resembling:
-
-```text
-KING RICHARD:
-My lord, I shall not...
-```
-
-save the checkpoint.
-
-Immediately build a generation script:
-
-```bash
-python generate.py --prompt "ROMEO:"
-```
-
-Output:
-
-```text
-ROMEO:
-...
-```
-
-Do not wait for perfect training.
-
-The first coherent fly-generated sentence is content.
-
----
-
-# 14. Scrambled-fly control
-
-Once RealFly works, create:
-
-## ScrambledFly
-
-Same:
-
-* number of neurons;
-* number of edges;
-* edge parameter count;
-* input/output interfaces;
-* training code;
-* dataset;
-* optimizer.
-
-But randomly rewire the graph.
-
-Then train it identically.
-
-This gives the simplest viral comparison:
-
-```text
-REAL FLY
-vs
-SCRAMBLED FLY
-```
-
-No need to start with sophisticated degree-preserving controls.
-
-Those can come later.
-
-If RealFly performs noticeably better:
-
-**that becomes the story.**
-
----
-
-# 15. Scoreboard
-
-Keep launch metrics simple.
-
-Example:
-
-| Model         | Validation loss | Generated text           |
-| ------------- | --------------: | ------------------------ |
-| Real Fly      |            1.72 | readable-ish Shakespeare |
-| Scrambled Fly |            2.01 | mostly nonsense          |
-| Tiny RNN      |            1.65 | readable                 |
-| Tiny GPT      |            1.48 | better                   |
-
-Numbers are placeholders.
-
-The most important visible comparison is:
-
-```text
-same training
-same graph size
-real wiring vs scrambled wiring
+candidate pool (region filter)
+neurons used
+directed connections used
+represented synaptic contacts
+minimum synapse threshold
+region breakdown of selected neurons
 ```
 
 ---
 
-# 16. Full-connectome version
+## 2. Dataset
 
-Only after the smaller version clearly works.
+Tiny Shakespeare, character-level, ~65-symbol vocabulary.
 
-Scale toward:
+Fixed 90/10 train/validation split. Commit the split boundaries and a hash of the corpus.
 
-```text
-~166k neurons
-```
+No pretrained language model, no teacher, no pretrained embeddings.
 
-and the full MaleCNS graph.
+### Reference losses (nats/char)
 
-This becomes:
+Only two kinds of reference numbers appear anywhere public:
 
-> **Full FlyGPT**
+* **Measured on our split:** unigram and bigram, computed by the preprocessing script and logged. These are the floor for every gate below.
+* **Documented external reference:** nanoGPT's `train_shakespeare_char` config reports a best validation loss of ~1.47 (verify against the repo README at launch time and cite it).
 
-Potential headline:
-
-> **I trained an entire digitally reconstructed fruit-fly nervous system to predict Shakespeare.**
-
-But this is V2.
-
-Do not block V0 on full scale.
+Rough informal expectations for a plain tanh RNN or "readable but funny" text (~1.7–2.0) may live in engineering notes but are never published or put in a table. Anything else in the scoreboard is a baseline we actually ran.
 
 ---
 
-# 17. Visualization
+## 3. Subgraph extraction
 
-The demo should make the project visually obvious.
+### 3.1 Region filter (decides the story)
 
-Screen layout:
+MaleCNS includes the ventral nerve cord. A connectivity-driven core extraction can land mostly in the VNC, which turns "fly brain" into "fly spinal cord."
 
-```text
-┌──────────────────────────────────────┐
-│ FlyGPT                               │
-├──────────────┬──────────────┬────────┤
-│ Prompt       │ Fly brain    │ Output │
-│              │ activity     │        │
-│ ROMEO:       │  •••••••     │ ROMEO: │
-│              │ •••••••••    │ ...    │
-└──────────────┴──────────────┴────────┘
+V0 restricts the candidate pool to **central-brain neurons** using the release annotations. Always log the region breakdown of the final selected set. A VNC-inclusive or whole-CNS pool is a later experiment.
+
+### 3.2 Random sampling is prohibited
+
+Randomly picking 5k–10k neurons from ~166k discards almost all induced connectivity and produces a fragmented graph. Its failure would mean nothing.
+
+### 3.3 Deterministic dense-core procedure
+
+```yaml
+region_filter: central_brain
+target_neurons: 5000        # launch; 10k is scale-up
+min_synapses: 3
+subgraph_method: directed_core
 ```
 
-Do not attempt to render 166k neurons live.
+A. **Filter weak edges:** keep `synapse_count >= min_synapses`. Threshold 3 is fixed for launch; `{1, 5}` are follow-ups only if the launch fails. Log it prominently; it is an engineering choice, not a biological claim.
 
-Visualize:
+B. **Largest strongly connected component** of the filtered graph — guarantees recurrent paths exist.
 
-* sampled neurons;
-* coarse anatomical regions;
-* active nodes;
-* current propagation;
-* maybe top recurrent paths.
+C. **Directed-core pruning:** iteratively remove neurons below an in- and out-degree threshold; choose the largest threshold leaving at least `target_neurons`.
 
-The visualization is explanatory, not scientific instrumentation.
+D. **Deterministic trim:** if larger than target, rank by `weighted_in_degree + weighted_out_degree`, keep top `target_neurons`, recompute induced graph and SCC. If the SCC drops below target, lower the pruning threshold in C and repeat.
+
+E. **Save exact IDs and hashes:**
+
+```text
+subgraph_node_ids.txt
+subgraph_edges.pt
+subgraph_config.yaml
+subgraph_hash.txt
+subgraph_stats.json     # N, E, SCC size, degree stats, reciprocity, region breakdown
+```
+
+Every control uses exactly these neurons.
 
 ---
 
-# 18. Demo interaction
+## 4. Controls (built in the same script as the real graph)
 
-Ideal public demo:
+### A. RealFly
+Original directed connectivity.
 
-User enters:
+### B. DegreePreservedFly — primary control
+Same neurons, same edge count, same in-degree and out-degree per neuron. Randomize via **directed double-edge swaps**:
 
-```text
-ROMEO:
-```
+* reject swaps that create self-loops or duplicate edges;
+* **10 × E** accepted swaps is a minimum, not evidence of mixing;
+* log the **fraction of original edges that survive** after scrambling. Some survival is unavoidable under degree preservation (hub-to-hub edges are likely in any degree-matched graph), so the test is that the fraction has **plateaued**: run two independent shuffles with different seeds and continue swapping until survival stops decreasing and both shuffles agree;
+* fixed RNG seed per control instance; log it.
 
-or:
+### C. UniformRandomFly — secondary control
+Same N and E, endpoints fully randomized. For visualization and a sanity ordering; not sufficient for the headline claim.
 
-```text
-KING:
-```
+### 4.1 Every control gets the same diagnostics as the real graph
 
-or arbitrary text.
-
-Then presses:
-
-```text
-GENERATE
-```
-
-The fly-network visualization animates.
-
-Text appears character by character.
-
-Optional toggle:
+Swaps preserve degrees but **not** the SCC, reachability, path lengths, or reciprocity. For every graph (real and each control) log:
 
 ```text
-[ Real Fly ] [ Scrambled Fly ]
+largest SCC size (fraction of N)
+reciprocal-pair count
+I→O reachable fraction
+I→O shortest-path median / p90 / max
 ```
 
-This is extremely useful for demos and video.
+Expect RealFly to have far more reciprocal pairs than the scrambled graph. That is part of "wiring" and is fair game, but know the number before anyone asks.
+
+### 4.2 Weighted controls
+If synapse counts are used for initialization (§10), the DegreePreserved control receives the original multiset of synapse counts randomly reassigned to its shuffled edges. The difference then remains "which neurons connect," not "what magnitudes exist."
 
 ---
 
-# 19. Launch video
+## 5. Input/output interface — selected by degree only
 
-Target:
+**Rationale.** If I/O nodes are chosen by reachability on the real graph and reused for the scrambled graph, the ports have been placed where the real wiring happens to route well. A RealFly win would then be partly an artifact of port placement.
 
-```text
-30–60 seconds
-```
-
-Script:
-
-### Hook
-
-> “Google and Janelia mapped the wiring of an entire fruit-fly nervous system.”
-
-### Cut
-
-Show connectome visualization.
-
-> “So I turned it into a language model.”
-
-### Cut
-
-Show architecture.
+**Rule.** Degree is identical across RealFly and DegreePreservedFly, so select I/O sets purely by degree. The resulting node sets are byte-identical across the two conditions.
 
 ```text
-Shakespeare
-    ↓
-fruit fly
-    ↓
-next character
+input nodes  = top 256 by out-degree   (within the subgraph)
+output nodes = top 512 by in-degree    (within the subgraph)
 ```
 
-### Cut
+Overlap between the two sets is allowed; log it. (For UniformRandomFly, degree is not preserved; apply the same rule to its own degrees and note the sets differ.)
 
-Show loss descending.
-
-### Cut
-
-Type:
-
+### Input path
 ```text
-ROMEO:
+character → 32–64-dim embedding → linear projection → 256 input neurons
 ```
 
-### Reveal
-
-Fly generates Shakespeare-ish text.
-
-### Final comparison
-
+### Output path
 ```text
-REAL FLY
-vs
-SCRAMBLED FLY
+512 output neuron states → linear → 65 logits → softmax
 ```
 
-### Closing line
+Adapters stay small relative to the recurrent parameter count; log the ratio.
 
-If RealFly wins:
-
-> “Apparently scrambling its brain makes it worse at Shakespeare.”
-
-That is the clip.
+Biological sensory/motor interfaces are a follow-up experiment.
 
 ---
 
-# 20. Twitter/X launch thread
+## 6. Path-length diagnostic — mandatory, on every graph, before training
 
-Opening post:
-
-> **I trained a fruit-fly brain to write Shakespeare.**
->
-> Scientists recently mapped the wiring of an entire fruit-fly nervous system.
->
-> I used that connectome as the architecture of a neural network and trained it from scratch on Tiny Shakespeare.
->
-> Here's what happened:
-
-Attach video.
-
-Second post:
-
-> This isn't a Transformer pretending to be a fly.
->
-> Each node corresponds to a real fly neuron, and recurrent connections are constrained by the actual connectome.
->
-> Gradient descent learns the connection strengths.
-
-Third:
+For each condition, compute directed shortest paths from the input set to the output set and report:
 
 ```text
-Real fly:      loss X
-Scrambled fly: loss Y
+reachable output fraction
+median, p90, max finite shortest path
 ```
 
-Fourth:
+**Microsteps are frozen at 2 for launch.** The path analysis is a go/no-go gate, not a tuner — a model hyperparameter must not depend on a randomly generated control topology.
 
-Show favorite generated passage.
+Gate: on every condition, reachable output fraction is high and the p90 input→output path is compatible with 2 microsteps per character (i.e. information can traverse the graph within a few characters). If any condition fails the gate, fix the subgraph density or the interface design, then re-run the gate. Do not adjust microsteps to rescue a bad graph.
 
-Fifth:
+A microstep sweep (1, 4) is a follow-up experiment run identically on all conditions.
 
-Link code/demo.
+Do not launch training against a graph whose outputs are six hops away and then conclude the fly can't learn.
 
 ---
 
-# 21. Honesty constraints
+## 7. Neuron model
 
-Do not say:
-
-> “We simulated a biological fruit fly brain.”
-
-Unless we eventually actually model the biological dynamics.
-
-Prefer:
-
-> “We trained a neural network using the fruit-fly connectome as its architecture.”
-
-Do not say:
-
-> “The fly understands Shakespeare.”
-
-Say:
-
-> “The network learned character-level Shakespeare statistics.”
-
-The joke can be stronger than the technical claim.
-
-That combination works well.
-
----
-
-# 22. Failure is still content
-
-If FlyGPT completely fails:
-
-That itself can become:
-
-> **I tried to teach a fruit fly Shakespeare. It went badly.**
-
-Then show:
+One biological neuron = one scalar hidden state `h_i ∈ ℝ`. No per-neuron vector embeddings.
 
 ```text
-ROMEO:
-fd;kkH::?aa...
+proposal_i = tanh( normalized_recurrent_input_i + external_input_i + bias_i )
+h_i_new    = (1 - leak_i) * h_i + leak_i * proposal_i
 ```
 
-and investigate why.
+* Leak is mandatory. `leak_i = sigmoid(raw_leak_i)`, initialized so `leak_i = 0.5`, trainable.
+* With `microsteps > 1`, the leak is applied every microstep, so the effective per-character time constant compounds. Log the mean leak and account for this when comparing microstep settings.
+* Weights are unconstrained in sign for V0.
 
-Possible follow-up:
-
-> “How many neurons does Shakespeare require?”
-
-That can become a scaling experiment:
+### Degree normalization
+For edge `j → i`:
 
 ```text
-1k fly
-5k fly
-10k fly
-50k fly
-full fly
+effective_weight_ji = learned_weight_ji / sqrt(in_degree_i)
 ```
 
-Plot language quality against neuron count.
+Because in-degree is preserved under the primary control, normalization is identical across conditions.
 
-That is still interesting and very shareable.
-
----
-
-# 23. High-value experiments
-
-After the first working demo:
-
-### Experiment A
-
-Real fly vs scrambled fly.
-
-### Experiment B
-
-How many fly neurons are needed before recognizable language appears?
-
+### Stability logging (every run)
 ```text
-1k
-5k
-10k
-25k
-50k
-100k
-full
-```
-
-### Experiment C
-
-Which brain regions matter?
-
-Remove sections and retrain/evaluate.
-
-### Experiment D
-
-Can FlyGPT learn something other than Shakespeare?
-
-Examples:
-
-```text
-Python source
-Linux kernel text
-Twitter posts
-Bible
-Dr. Seuss-like public-domain text
-```
-
-Prefer datasets with clear legal/public-domain status.
-
-### Experiment E
-
-Can the fly learn word-level/token-level language?
-
-Only later.
-
----
-
-# 24. Optimization target
-
-The first objective is not:
-
-```text
-best possible validation loss
-```
-
-It is:
-
-```text
-first recognizably coherent generated text
-```
-
-After that:
-
-```text
-best RealFly vs ScrambledFly difference
-```
-
-After that:
-
-```text
-scale
+mean |h|, fraction |h| > 0.95, activation variance, gradient norm, mean leak
 ```
 
 ---
 
-# 25. Viral milestone ladder
+## 8. Implementation
 
-## Milestone 1
+### 8.1 Batched sparse recurrence from day one
 
-**A real fly subgraph overfits text.**
+* State: `[B, N]`.
+* Recurrent matrix stored **with rows = destination, columns = source** so that `incoming = torch.sparse.mm(W, state.T).T` needs no extra transpose of W. Build the sparse tensor each forward pass from a dense trainable `values` tensor and fixed `indices`.
+* COO first for autograd simplicity; benchmark CSR after correctness is established.
+* Never materialize `[B, T, E]` messages.
+* Keep a slow dense reference implementation for a unit test on a tiny graph; assert equality with the sparse path and assert gradients reach every edge value.
 
-Internal milestone.
+### 8.2 Precision
+Sparse matmul support in BF16 is patchy. Keep the sparse recurrent op in **fp32**; use BF16 only for the dense adapters and readout if it is stable.
 
-## Milestone 2
+### 8.3 Compute budget
+Do not plan around a FLOP estimate. Sparse autograd memory and throughput routinely diverge from back-of-envelope numbers.
 
-**FlyGPT produces recognizable Shakespeare.**
+Procedure: benchmark **one** training run at the launch config, log peak memory and tokens/sec, then parallelize conditions and seeds as measured capacity permits.
 
-Post-worthy.
-
-## Milestone 3
-
-**Real fly beats scrambled fly.**
-
-Very post-worthy.
-
-## Milestone 4
-
-**Interactive visualization.**
-
-Launch-worthy.
-
-## Milestone 5
-
-**Full connectome works.**
-
-Major launch.
-
-## Milestone 6
-
-**Interesting emergent difference between biological and randomized topology.**
-
-Potential research story on top of the viral project.
+Expect the dominant risk to be optimization (dead or saturated activations, leak/LR interactions) rather than raw compute, but confirm that with the benchmark rather than assuming it.
 
 ---
 
-# 26. Repository
+## 9. Training
 
 ```text
-flygpt/
-├── README.md
-├── pyproject.toml
-├── train.py                 # python train.py configs/fly_5k.yaml
-├── generate.py              # python generate.py --ckpt checkpoints/fly_5k.pt --prompt "ROMEO:"
-├── evaluate.py              # val loss per checkpoint -> results/scoreboard.md
-├── visualize.py             # static neuron-activity plot for a prompt
-│
-├── flygpt/                  # the library
-│   ├── graph.py             # load edges, pick a connected subgraph, choose I/O neurons
-│   ├── scramble.py          # ScrambledFly: same nodes/edges/params, random wiring
-│   ├── model.py             # FlyRNN: embed -> input neurons -> scatter-add recurrence -> readout
-│   ├── data.py              # Tiny Shakespeare + toy tasks, char vocab, TBPTT batches
-│   ├── baselines.py         # tiny RNN and tiny GPT for the scoreboard
-│   ├── config.py            # yaml -> dataclasses
-│   └── checkpoint.py
-│
-├── configs/
-│   ├── synthetic_300.yaml   # step 1: random graph, delayed-copy task
-│   ├── fly_1k.yaml          # step 2: overfit an excerpt
-│   ├── fly_5k.yaml          # step 3: FlyGPT V0
-│   ├── fly_10k.yaml
-│   ├── fly_full.yaml        # V2
-│   ├── scrambled_5k.yaml    # fly_5k + scramble: true, nothing else
-│   ├── baseline_rnn.yaml
-│   └── baseline_gpt.yaml
-│
-├── data/
-│   ├── shakespeare/download.sh
-│   └── fly/                 # fetch_malecns.py -> build_edges.py -> edges.parquet
-│
-├── results/                 # scoreboard.md + samples/ are committed; they are the content
-├── checkpoints/             # gitignored
-├── runs/                    # gitignored
-├── experiments/             # section 23, added once V0 talks
-├── demo/                    # milestone 4
-└── tests/
+optimizer:        AdamW
+recurrent LR:     ~3e-4
+adapter LR:       ~1e-3
+grad clip:        1.0
+context:          64  (→128 →256 only if useful)
+BPTT:             truncated
+initial state:    zeros at sequence boundaries (persistent state = later experiment)
 ```
 
-Getting started:
-
-```bash
-uv venv && uv pip install -e ".[dev]"
-pytest
-python train.py configs/synthetic_300.yaml          # step 1, ~10 s on CPU
-export NEUPRINT_TOKEN=...                           # neuprint.janelia.org -> Account
-python data/fly/fetch_malecns.py && python data/fly/build_edges.py
-python train.py configs/fly_1k.yaml                 # step 2
-python train.py configs/fly_5k.yaml                 # step 3
-python train.py configs/scrambled_5k.yaml           # the control
-python evaluate.py checkpoints/*.pt
-```
----
-
-# 27. README opening
-
+### Logged per run
 ```text
-# FlyGPT 🪰
-
-Can a fruit-fly brain learn to write Shakespeare?
-
-Researchers mapped the complete wiring diagram of a fruit-fly
-central nervous system.
-
-FlyGPT uses that biological connectome as the recurrent architecture
-of a language model.
-
-We train its connection weights from scratch on Tiny Shakespeare.
-
-No pretrained language model.
-No transformer hidden inside.
-Just Shakespeare → fly → next character.
+train loss, val loss, step, characters seen, wall-clock, tokens/sec,
+GPU memory, grad norm, activation saturation, mean leak
 ```
 
-Then immediately show generated output.
+Plot val loss against step, wall-clock, and characters seen. The launch chart must regenerate from logs.
+
+### Fixed-prompt generations
+Prompts `ROMEO:`, `KING:`, `JULIET:`, `First Citizen:` at steps 0 / 10% / 25% / 50% / 75% / 100%, fixed seed and temperature. This produces the "garbage → punctuation → fragments → speech" narrative.
 
 ---
 
-# 28. Immediate build target
+## 10. Later biological variants (gated behind a working model)
 
-Build this first:
+* **Synapse-count initialization:** `magnitude ∝ log(1 + synapse_count)`, then degree-normalized. Compare against random magnitudes, using the weighted control from §4.2.
+* **Neurotransmitter-sign constraint:** constrain outgoing weight signs by predicted transmitter class where a defensible excitatory/inhibitory mapping exists.
+* **Biological I/O:** annotated sensory neurons as inputs, descending/motor-related neurons as outputs.
+* **VNC / whole-CNS pool.**
 
-```text
-FlyGPT V0
-
-neurons:        5,000–10,000
-graph:          real MaleCNS subgraph
-hidden/neuron:  1 scalar
-task:           character-level language modeling
-dataset:        Tiny Shakespeare
-context:        64
-microsteps:     1
-optimizer:      AdamW
-input neurons:  256–512
-output neurons: 512–1024
-```
-
-Required result:
-
-```text
-validation loss visibly decreases
-```
-
-Then:
-
-```text
-generate("ROMEO:")
-```
-
-The moment output becomes recognizably Shakespeare-like, stop optimizing long enough to capture it.
+None of these block V0 or the headline.
 
 ---
 
-# 29. The one experiment that matters most
+## 11. Baselines
 
-After the first working model:
+### FrozenFly (reservoir) — first sanity test
+Real topology, fixed random-sign weights, degree-normalized, scaled by power-iteration spectral-radius estimate to ~0.9–1.0, frozen. Train only the input adapter and readout.
 
-```text
-REAL CONNECTOME
-       vs
-SAME NETWORK WITH EDGES SCRAMBLED
-```
+Gate: must clearly beat the bigram loss (~2.4). If not, inspect topology, spectral behavior, I/O paths, microsteps, leak, normalization before touching the trainable model.
 
-Train both from random initialization.
+### Parameter-matched engineered baselines (post-launch-candidate)
+For each FlyGPT config log recurrent / input / output / total trainable parameters, then build approximately matched:
 
-Same everything else.
+* vanilla tanh RNN
+* GRU (if practical)
+* tiny Transformer
 
-If the real fly wins, that is the result to lead with.
-
-If it doesn't, lead with the fact that the fly learns at all.
+Scoreboard columns: model, params, val loss (mean ± range over seeds), notes.
 
 ---
 
-# 30. Final project definition
+## 12. Seeds and the decision rule
 
-> **FlyGPT is a language model trained from scratch on Shakespeare whose recurrent architecture is constrained by the wiring diagram of a real fruit-fly nervous system.**
+* **Paired seeds.** For seed *k*, RealFly and DegreePreservedFly share the same data order, batch sampling, adapter initialization, and edge-value RNG stream (edge sets differ, so recurrent weights cannot be identical, but everything else is). 3 paired seeds for development; **5 paired seeds for any wiring-matters claim**.
+* Report the five paired differences `Δ_k = loss(Scrambled_k) − loss(Real_k)` directly, alongside per-condition means and every seed trace. Do not manufacture a pseudo-p-value from min/max ranges.
+* **Pre-register the claim rule before seeing results** (kept deliberately simple): "wiring matters" is claimed only if **all 5 paired differences have the same sign** (a 5/5 sign test) *and* the mean difference is at least a stated minimum meaningful effect, set at **0.05 nats** for launch. If the signs are mixed or the effect is smaller, report "no detectable difference at this scale" — still a publishable result (§14).
+* For social media, lead with the cleanest representative generation, but publish the paired differences beside it.
 
-The build philosophy:
+---
 
-> **Make the fly talk first. Do neuroscience afterward.**
+## 13. Launch configuration — one config, no grid
+
+```yaml
+project: flygpt-v0
+
+dataset:
+  name: tiny_shakespeare
+  split: 0.90
+
+graph:
+  source: malecns-v1.0
+  region_filter: central_brain
+  target_neurons: 5000
+  min_synapses: 3
+  selector: directed_core
+  retain_largest_scc: true
+
+controls:
+  - real
+  - degree_preserving       # primary
+  # uniform_random is a follow-up, not part of the launch comparison
+
+interface:
+  input_nodes: 256
+  input_rule: top_out_degree
+  output_nodes: 512
+  output_rule: top_in_degree
+
+model:
+  state_dim_per_neuron: 1
+  activation: tanh
+  learned_leak: true
+  leak_init: 0.5
+  degree_normalization: true
+
+sequence:
+  context: 64
+  microsteps: 2                 # frozen; path diagnostic is a gate, not a tuner
+
+training:
+  optimizer: adamw
+  recurrent_lr: 0.0003
+  adapter_lr: 0.001
+  grad_clip: 1.0
+  sparse_precision: fp32
+  adapter_precision: bf16
+
+evaluation:
+  seeds_dev: [1, 2, 3]
+  seeds_claim: [1, 2, 3, 4, 5]
+  paired_seeds: true
+  claim_rule: {all_paired_diffs_same_sign: true, min_mean_diff_nats: 0.05}
+```
+
+Everything not in this file — threshold sweeps, microstep sweeps, uniform-random control, synapse-count init, NT signs, GRU/Transformer baselines, 10k and full-CNS scale — is gated behind a working launch model.
+
+---
+
+## 14. Failure is still content
+
+If FlyGPT does not learn, or if real and scrambled are indistinguishable, that is a result:
+
+> **I tried to teach a fruit fly Shakespeare. Here's what happened.**
+
+Follow-up experiment: the **neuron-count scaling ladder**.
+
+```text
+1k → 5k → 10k → 25k → 50k → 100k → full
+```
+
+Plot val loss (real and degree-preserved) against neuron count. "How many fly neurons does Shakespeare require?" is shareable whether or not the wiring matters.
+
+---
+
+## 15. Go/no-go gates
+
+**Before training**
+* dense subgraph exists; SCC healthy; region breakdown acceptable
+* controls generated; diagnostics logged for every condition
+* I/O sets identical across real and degree-preserved
+* path-length gate passes on all conditions at microsteps = 2
+* scramble edge-survival fraction has plateaued (§4)
+* sparse/dense unit test agrees; gradients reach every edge value
+* unigram/bigram reference losses computed on the actual split
+
+**Reservoir gate:** FrozenFly beats bigram.
+
+**Before 1k → 5k:** 1k RealFly overfits a small Shakespeare excerpt to near-memorization. If not, the implementation is broken; stop.
+
+**Before 5k → 10k:** declining val loss and structured generation at 5k.
+
+**Before the demo:** at least one reproducibly trained model.
+
+**Before claiming wiring matters:** the §12 paired-seed claim rule passes with 5 seeds.
+
+---
+
+## 16. Build order
+
+```text
+ 1. Download MaleCNS connectivity; record license/citation
+ 2. Region filter + deterministic dense-core extractor (+ stats file)
+ 3. Degree-preserving rewiring (+ uniform-random, cheap)
+ 4. Degree-based I/O selection
+ 5. Path-length / SCC / reciprocity diagnostic for every condition
+ 6. Batched sparse recurrent cell (rows = destination) + dense reference test
+ 7. Gradient-reach test
+ 8. FrozenFly reservoir gate
+ 9. 1k overfit
+10. 5k launch config: real + degree-preserved × 3 seeds, run concurrently
+11. Generation checkpoints + demo
+12. Video
+13. 10k scale-up; engineered baselines; biological variants; scaling ladder
+14. Full-CNS attempt
+```
+
+---
+
+## 17. Demo
+
+```text
+┌───────────────────────────────────────────┐
+│                FlyGPT 🪰                  │
+├───────────┬─────────────────┬─────────────┤
+│ Prompt    │ Neural activity │ Completion  │
+│ ROMEO:    │     •••••       │ ROMEO: ...  │
+├───────────┴─────────────────┴─────────────┤
+│ [ REAL FLY ] [ SCRAMBLED FLY ]            │
+└───────────────────────────────────────────┘
+```
+
+Rendered activity may be sampled or aggregated. Never imply it is a faithful biological simulation.
+
+---
+
+## 18. Launch video (30–60 s)
+
+1. **Hook:** "Scientists mapped the neural wiring of an entire fruit-fly nervous system. So I tried to teach it Shakespeare." Show the connectome.
+2. **Architecture:** character → real fly wiring → next character.
+3. **Training:** loss falling; generations improving through the fixed-prompt checkpoints.
+4. **Demo:** type `ROMEO:`, show completion.
+5. **Control:** flip REAL FLY → SCRAMBLED FLY.
+6. **Closing line (only if §12 passes):** "Same neurons. Same number of connections. Same in- and out-degree for every neuron. Scramble which neurons connect, and it gets worse."
+
+If §12 does not pass, the closing line is the fact that it learned at all, or the scaling-ladder question.
+
+---
+
+## 19. Public claim rules
+
+**Say (V0):** "The recurrent architecture is a real subgraph of the fruit-fly brain connectome." · "We train the connection strengths with gradient descent." · "This is not a biological simulation of a living fly." · "Compared against the same neurons with degree-preserving scrambled connections, across five paired seeds."
+
+Upgrade "a real subgraph of" to "the wiring diagram of" only when the full central brain (or full CNS) has actually been trained.
+
+**Do not say:** "We uploaded GPT into a fly." · "A living fruit fly learned English." · "The fly understands Shakespeare." · "The fly beats the scrambled fly" if the gap is within seed spread.
+
+Expect the reply "there's no transformer, why GPT?" — the README pre-empts it; lean in.
+
+The joke can be loose. The technical explanation cannot.
+
+---
+
+## 20. Final definition
+
+> **FlyGPT (V0) is a language model trained from scratch on Shakespeare whose recurrent architecture is a real subgraph of the fruit-fly brain connectome — compared, fairly, against the same neurons with their wiring scrambled.**
+
+---
+
+## 21. Spec freeze
+
+This revision is frozen. Further planning has less expected value than finding out whether 1,000 fly neurons can overfit Shakespeare. Changes from here are recorded as decisions in the run logs, not as new spec revisions, until the first trained model exists.
 

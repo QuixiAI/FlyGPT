@@ -1,4 +1,4 @@
-Milestone 4. Build only after milestone 2 (recognizable Shakespeare).
+Build-order step 11. Gated on "at least one reproducibly trained model" (README §15).
 
-- `server.py` — loads real + scrambled checkpoints, streams characters and sampled neuron activations over websocket.
-- `web/` — the three-pane layout from README section 17: prompt | fly brain activity | output, with a [Real Fly] [Scrambled Fly] toggle.
+Three panes: prompt | neural activity | completion, with a [REAL FLY] [SCRAMBLED FLY] toggle (§17).
+Activity is sampled/aggregated and labelled as such. `visualize.py` is the static precursor.

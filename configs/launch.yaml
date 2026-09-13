@@ -1,0 +1,64 @@
+# README §13 — the one launch config. No grid. Everything else is a follow-up experiment.
+project: flygpt-v0
+graph_name: cb5k
+
+dataset:
+  name: tiny_shakespeare
+  path: data/shakespeare/input.txt
+  split: 0.90
+
+graph:
+  source: malecns-v1.0
+  edges_path: data/fly/edges.parquet
+  neurons_path: data/fly/neurons.parquet
+  region_filter: central_brain
+  target_neurons: 5000
+  min_synapses: 3
+  selector: directed_core
+  retain_largest_scc: true
+
+controls:
+  - real
+  - degree_preserving       # primary
+  # uniform_random is a follow-up, not part of the launch comparison
+
+interface:
+  input_nodes: 256
+  input_rule: top_out_degree
+  output_nodes: 512
+  output_rule: top_in_degree
+
+model:
+  state_dim_per_neuron: 1
+  activation: tanh
+  learned_leak: true
+  leak_init: 0.5
+  degree_normalization: true
+  embed_dim: 32
+
+sequence:
+  context: 64
+  microsteps: 2                 # frozen; path diagnostic is a gate, not a tuner
+
+gate:                           # §6 thresholds — engineering choices, logged
+  min_reachable_fraction: 0.95
+  max_p90_chars: 3
+
+training:
+  optimizer: adamw
+  recurrent_lr: 0.0003
+  adapter_lr: 0.001
+  grad_clip: 1.0
+  sparse_precision: fp32
+  adapter_precision: bf16
+  batch_size: 32
+  steps: 20000
+  eval_every: 250
+
+evaluation:
+  seeds_dev: [1, 2, 3]
+  seeds_claim: [1, 2, 3, 4, 5]
+  paired_seeds: true
+  claim_rule: {all_paired_diffs_same_sign: true, min_mean_diff_nats: 0.05}
+  prompts: ["ROMEO:", "KING:", "JULIET:", "First Citizen:"]
+  generation_fractions: [0.0, 0.1, 0.25, 0.5, 0.75, 1.0]

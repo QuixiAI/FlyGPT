@@ -1,48 +1,47 @@
 #!/usr/bin/env python
-"""Evaluate checkpoints and append rows to results/scoreboard.md.
+"""Scoreboard (README §11): model, params, val loss mean ± range over seeds, notes.
 
-python evaluate.py checkpoints/fly_5k.pt checkpoints/scrambled_5k.pt ...
+    python evaluate.py configs/launch.yaml            # reads runs/, writes results/scoreboard.md
 """
 from __future__ import annotations
 
 import argparse
+import json
+from collections import defaultdict
 from pathlib import Path
 
-import torch
+from flygpt import Config
+from flygpt.analysis import read_run
 
-from flygpt.checkpoint import load_checkpoint
-from flygpt.data import make_streams
-from flygpt.model import count_params
-from train import evaluate, sample
+ap = argparse.ArgumentParser()
+ap.add_argument("config", nargs="?", default="configs/launch.yaml")
+ap.add_argument("--metric", default="final_val", choices=["final_val", "best_val"])
+args = ap.parse_args()
+cfg = Config.load(args.config)
+root = Path("runs") / cfg.project / cfg.graph_name
 
-SCOREBOARD = Path("results/scoreboard.md")
-HEADER = "| Model | Neurons | Edges | Params | Val loss | Sample |\n|---|--:|--:|--:|--:|---|\n"
+split = Path("data/shakespeare/split.json")
+ref = json.loads(split.read_text()) if split.exists() else {}
+by_cond = defaultdict(list)
+params = {}
+for d in sorted(root.glob("*_seed*")):
+    cond, seed = d.name.rsplit("_seed", 1)
+    try:
+        by_cond[cond].append((int(seed), read_run(d)[args.metric]))
+        params[cond] = json.loads((d / "meta.json").read_text()).get("params", {}).get("total", "-")
+    except (ValueError, FileNotFoundError):
+        pass
 
-
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("ckpts", nargs="+")
-    ap.add_argument("--device", default="cpu")
-    ap.add_argument("--batches", type=int, default=50)
-    ap.add_argument("--prompt", default="ROMEO:")
-    args = ap.parse_args()
-
-    if not SCOREBOARD.exists() or HEADER.split("\n")[0] not in SCOREBOARD.read_text():
-        SCOREBOARD.write_text("# Scoreboard\n\n" + HEADER)
-
-    torch.manual_seed(0)
-    for path in args.ckpts:
-        model, graph, vocab, cfg, _ = load_checkpoint(path, args.device)
-        _, _, val = make_streams(cfg.data, cfg.train.seed)
-        loss = evaluate(model, val, torch.device(args.device), args.batches)
-        text = sample(model, vocab, torch.device(args.device), args.prompt, 80)
-        text = text[len(args.prompt):].replace("\n", " / ").replace("|", "\\|").strip()
-        n = graph.n if graph else "-"
-        e = graph.n_edges if graph else "-"
-        row = f"| {cfg.name} | {n} | {e} | {count_params(model):,} | {loss:.3f} | `{text}` |\n"
-        SCOREBOARD.open("a").write(row)
-        print(row, end="")
-
-
-if __name__ == "__main__":
-    main()
+lines = ["# Scoreboard", "", f"Config: `{args.config}` · graph `{cfg.graph_name}` · metric `{args.metric}` (nats/char). ",
+         "Same data, same split, same context, same training loop for every row.", ""]
+if ref:
+    lines += [f"Measured on our split: unigram {ref['unigram_nats']:.3f}, bigram {ref['bigram_nats']:.3f}.",
+              "External reference: nanoGPT `train_shakespeare_char` best val ~1.47 (verify + cite at launch).", ""]
+lines += ["| Model | Params | Val loss (mean) | Range | Seeds | Notes |", "|---|--:|--:|---|--:|---|"]
+for cond, rows in by_cond.items():
+    vals = [v for _, v in rows]
+    lines.append(f"| {cond} | {params[cond]:,} | {sum(vals)/len(vals):.3f} | {min(vals):.3f}–{max(vals):.3f} | {len(vals)} | |"
+                 if isinstance(params[cond], int) else
+                 f"| {cond} | {params[cond]} | {sum(vals)/len(vals):.3f} | {min(vals):.3f}–{max(vals):.3f} | {len(vals)} | |")
+Path("results/scoreboard.md").write_text("\n".join(lines) + "\n")
+print("\n".join(lines))

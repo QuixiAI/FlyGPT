@@ -1,71 +1,87 @@
+import numpy as np
 import torch
 import torch.nn.functional as F
 
-from flygpt import Config, build_model
-from flygpt.config import DataConfig, GraphConfig, ModelConfig
-from flygpt.data import make_streams
-from flygpt.graph import build_graph
-from flygpt.model import FlyRNN
+from flygpt.config import ModelConfig, SequenceConfig
+from flygpt.connectome.interface import select_io
+from flygpt.connectome.synthetic import synthetic_graph
+from flygpt.data import TokenStream
+from flygpt.model import FlyRNN, make_frozen_fly, spectral_radius
 
 
-def small_model(vocab=10, **model_kw):
-    g = build_graph(GraphConfig(source="synthetic", n_neurons=120, n_input=8, n_output=16))
-    return FlyRNN(g, vocab, ModelConfig(embed_dim=8, **model_kw)), g
+def small(vocab=10, n=120, microsteps=2, seed=0, **mk):
+    g = synthetic_graph(n, 0.05, seed=seed)
+    inp, out, _ = select_io(g, 8, "top_out_degree", 16, "top_in_degree")
+    m = FlyRNN(g, inp, out, vocab, ModelConfig(embed_dim=8, **mk), SequenceConfig(context=16, microsteps=microsteps),
+               edge_generator=torch.Generator().manual_seed(seed))
+    return m, g
 
 
 def test_forward_shapes():
-    m, g = small_model()
-    x = torch.randint(0, 10, (3, 7))
-    logits, state = m(x)
-    assert logits.shape == (3, 7, 10)
-    assert state.shape == (3, g.n)
+    m, g = small()
+    lg, st = m(torch.randint(0, 10, (3, 7)))
+    assert lg.shape == (3, 7, 10) and st.shape == (3, g.n)
 
 
-def test_gradients_reach_edge_weights_and_bias():
-    m, _ = small_model()
-    x = torch.randint(0, 10, (2, 5))
-    logits, _ = m(x)
-    logits.sum().backward()
-    assert m.edge_weight.grad is not None and m.edge_weight.grad.abs().sum() > 0
-    assert m.bias.grad is not None
+def test_sparse_matches_dense_reference():
+    m, g = small()
+    state = torch.randn(4, g.n) * 0.5
+    x = torch.randint(0, 10, (4,))
+    a = m.step(state, x)
+    b = m.dense_reference_step(state, x)
+    assert torch.allclose(a, b, atol=1e-5), (a - b).abs().max()
 
 
-def test_microsteps_and_leak_run():
-    m, _ = small_model(microsteps=3, leak=0.5)
-    logits, _ = m(torch.randint(0, 10, (2, 4)))
-    assert torch.isfinite(logits).all()
+def test_gradients_reach_every_edge_value_and_leak():
+    m, _ = small()
+    lg, _ = m(torch.randint(0, 10, (2, 6)))
+    lg.sum().backward()
+    assert m.edge_values.grad is not None and (m.edge_values.grad != 0).all(), "some edges receive no gradient"
+    assert m.raw_leak.grad is not None and m.bias.grad is not None
 
 
-def test_generate_shape():
-    m, _ = small_model()
-    out = m.generate(torch.tensor([[1, 2, 3]]), max_new=5)
-    assert out.shape == (1, 8)
+def test_leak_init_and_degree_normalization():
+    m, g = small()
+    assert torch.allclose(m.leak, torch.full((g.n,), 0.5))
+    indeg = torch.bincount(m.indices[0], minlength=g.n).float()
+    assert torch.allclose(m.edge_scale, 1 / indeg[m.indices[0]].sqrt())
+    m2, _ = small(degree_normalization=False)
+    assert (m2.edge_scale == 1).all()
+
+
+def test_paired_seed_gives_identical_adapters_and_edge_stream():
+    torch.manual_seed(1); a, _ = small(seed=3)
+    torch.manual_seed(1); b, _ = small(seed=3)
+    assert torch.equal(a.embed.weight, b.embed.weight) and torch.equal(a.edge_values, b.edge_values)
+
+
+def test_frozen_fly_only_trains_adapters_and_has_target_radius():
+    g = synthetic_graph(120, 0.05, seed=0)
+    inp, out, _ = select_io(g, 8, "top_out_degree", 16, "top_in_degree")
+    m = make_frozen_fly(g, inp, out, 10, ModelConfig(embed_dim=8), SequenceConfig(microsteps=2), seed=0)
+    assert m.recurrent_parameters() == []
+    assert abs(spectral_radius(m) - 0.95) < 0.1
+    assert set(m.edge_values.abs().unique().tolist()).__len__() == 1  # +-c
 
 
 def test_loss_drops_on_repeated_sequence():
     torch.manual_seed(0)
-    vocab, tr, _ = make_streams(DataConfig(task="repeat", seq_len=16, batch_size=8))
-    m, _ = small_model(vocab=len(vocab))
+    text = ("abcdefgh" * 400)
+    vocab = sorted(set(text)); ids = np.array([vocab.index(c) for c in text])
+    tr = TokenStream(ids, 16, 8, seed=0)
+    m, _ = small(vocab=len(vocab))
     opt = torch.optim.AdamW(m.parameters(), lr=3e-3)
 
     def loss_at():
-        x, y = tr.batch()
-        lg, _ = m(x)
+        x, y = tr.batch(); lg, _ = m(x)
         return F.cross_entropy(lg.reshape(-1, lg.shape[-1]), y.reshape(-1))
-
     first = loss_at().item()
     for _ in range(150):
-        opt.zero_grad()
-        loss = loss_at()
-        loss.backward()
-        opt.step()
-    assert loss.item() < 0.5 * first, (first, loss.item())
+        opt.zero_grad(); l = loss_at(); l.backward(); opt.step()
+    assert l.item() < 0.5 * first, (first, l.item())
 
 
-def test_build_model_all_types():
-    for mt in ["fly", "rnn", "gpt"]:
-        cfg = Config.from_dict({"model_type": mt, "graph": {"source": "synthetic", "n_neurons": 100, "n_input": 8, "n_output": 8},
-                                "data": {"seq_len": 8}})
-        m, _ = build_model(cfg, 20)
-        lg, _ = m(torch.randint(0, 20, (2, 8)))
-        assert lg.shape == (2, 8, 20)
+def test_generate_and_states():
+    m, g = small()
+    out, states = m.generate(torch.tensor([[1, 2, 3]]), 5, return_states=True)
+    assert out.shape == (1, 8) and states.shape == (8, g.n)
