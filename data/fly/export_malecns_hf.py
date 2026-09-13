@@ -182,6 +182,24 @@ The **MaleCNS v1.0** connectome, the complete wiring diagram of an adult male *D
 nervous system (brain, optic lobes, and ventral nerve cord), packaged as Hugging Face `safetensors` so it loads as
 PyTorch tensors with `AutoModel.from_pretrained(..., trust_remote_code=True)`.
 
+**Why this exists.** MaleCNS reached the Hub through [ngxson/fly-llm-hf](https://huggingface.co/ngxson/fly-llm-hf),
+a fun demonstration that the fly's central brain can serve as a frozen echo-state reservoir for a TinyStories language
+model. That repository is a *model*: it keeps 49,393 central-brain neurons, assigns each synapse a sign from the
+presynaptic neuron's predicted neurotransmitter, rescales the whole matrix to a spectral radius of 0.99, and trains
+projections, per-neuron gains, and a readout around it. Those are good modeling decisions for that project, but
+they are baked into its weights, so anyone who wants the connectome for something else has to undo them or go back
+to the raw release. This repository is the layer underneath: the **source connectome, unmodified**, so that
+fly-llm-hf, [FlyGPT](https://github.com/QuixiAI/FlyGPT), graph-ML work, and simulations can all start from the same
+lossless tensors. At a high level the differences are:
+
+- **Whole nervous system, not a subset.** Every body in the release's connectivity file: brain, optic lobes, and
+  ventral nerve cord, with subsets available as masks rather than chosen for you.
+- **Raw anatomical counts, not neural weights.** `synapse_count` is the release's `weight` column, untouched: no
+  sign convention, no spectral rescaling, no normalization, no bf16 rounding, no random initialization.
+- **Neurotransmitter predictions kept separate.** Mirrored as their own tensors so a sign convention is something
+  you apply, not something you inherit.
+- **Verified lossless.** The build reloads the saved tensors and checks them against the release table edge by edge.
+
 > **A lossless packaging of the MaleCNS connectivity tables. It imposes no neuron model, no neurotransmitter sign
 > convention, no normalization, no rounding, no initialization, and no language-model architecture.**
 
@@ -204,11 +222,9 @@ weights (sign, scale, normalization, random re-initialization) is a downstream m
 The release also ships a traced-only connectivity file. It is not packaged separately because it is exactly this table
 restricted to bodies with `status == Traced`; the build script checks that equality edge by edge.
 
-## How this differs from `ngxson/fly-llm-hf`
+## Side by side with `ngxson/fly-llm-hf`
 
-MaleCNS is already on the Hub in [ngxson/fly-llm-hf](https://huggingface.co/ngxson/fly-llm-hf), so this is not the
-first packaging. It is a different layer of the stack: that repository is a **derived language model**; this one is
-the **source connectome**, unmodified. Facts about fly-llm-hf below are taken from its model card.
+Facts about fly-llm-hf are taken from its model card.
 
 | | this repository | `ngxson/fly-llm-hf` |
 |---|---|---|
