@@ -204,15 +204,60 @@ print(tok.decode(out[0]))
 
 The tokenizer is strict: only the 65 characters of Tiny Shakespeare are encodable.
 
-## License and citation
+## Citation
+
+If you use this model, please cite it, its base model, and the MaleCNS dataset paper.
+
+This model:
+
+```bibtex
+@misc{{quixiai2026flygpt,
+  title        = {{FlyGPT: a language model whose recurrent architecture is a real subgraph of the fruit-fly connectome}},
+  author       = {{Hartford, Eric}},
+  year         = {{2026}},
+  publisher    = {{Hugging Face}},
+  howpublished = {{\\url{{https://huggingface.co/QuixiAI/FlyGPT}}}},
+  note         = {{Base model: QuixiAI/MaleCNS (MaleCNS v1.0, Berg et al. 2026, CC-BY 4.0). Code: https://github.com/QuixiAI/FlyGPT}}
+}}
+```
+
+The base model (lossless connectome packaging):
+
+```bibtex
+@misc{{quixiai2026malecns,
+  title        = {{MaleCNS: the MaleCNS v1.0 fruit-fly connectome as lossless safetensors}},
+  author       = {{Hartford, Eric}},
+  year         = {{2026}},
+  publisher    = {{Hugging Face}},
+  howpublished = {{\\url{{https://huggingface.co/QuixiAI/MaleCNS}}}},
+  note         = {{Repackaging of Berg et al. (2026), CC-BY 4.0}}
+}}
+```
+
+The dataset (required by the CC-BY 4.0 license):
+
+```bibtex
+@article{{berg2026malecns,
+  title     = {{Sexual dimorphism in the complete {{Drosophila}} male central nervous system connectome}},
+  author    = {{Berg, Stuart and Beckett, Isabella R. and Costa, Marta and Schlegel, Philipp and Januszewski, Michał and Marin, Elizabeth C. and Nern, Aljoscha and Preibisch, Stephan and Qiu, Wei and Takemura, Shin-ya and Fragniere, Alexandra M.C. and Champion, Andrew S. and Adjavon, Diane-Yayra and Cook, Michael and Gkantia, Marina and Hayworth, Kenneth J. and Huang, Gary B. and Katz, William T. and Kämpf, Florian and Lu, Zhiyuan and Ordish, Christopher and Paterson, Tyler and Stürner, Tomke and Trautman, Eric T. and Whittle, Catherine R. and Burnett, Laura E. and Hoeller, Judith and Li, Feng and Loesche, Frank and Morris, Billy J. and Pietzsch, Tobias and Pleijzier, Markus W. and Silva, Valeria and Yin, Yijie and Ali, Iris and Badalamente, Griffin and Bates, Alexander Shakeel and Beresford, Rory J. and Bogovic, John and Brooks, Paul and Cachero, Sebastian and Canino, Brandon S. and Chaisrisawatsuk, Bhumpanya and Clements, Jody and Crowe, Arthur and de Haan Vicente, Inês and Dempsey, Georgia and Donà, Erika and Dos Santos, Márcia and Dreher, Marisa and Dunne, Christopher R. and Eichler, Katharina and Finley-May, Samantha and Flynn, Miriam A. and Hameed, Imran and Hopkins, Gary Patrick and Hubbard, Philip M. and Kiassat, Ladann and Kovalyak, Julie and Lauchie, Shirley A. and Leonard, Meghan and Lohff, Alanna and Longden, Kit D. and Maldonado, Charli A. and Moitra, Ilina and Moon, Sung Soo and Mooney, Caroline and Munnelly, Eva J. and Okeoma, Nneoma and Olbris, Donald J. and Pai, Anika and Patel, Birava and Phillips, Emily M. and Plaza, Stephen M. and Richards, Alana and Rivas Salinas, Jennifer and Roberts, Ruairí J.V. and Rogers, Edward M. and Scott, Ashley L. and Scuderi, Louis A. and Seenivasan, Pavithraa and Serratosa Capdevila, Laia and Smith, Claire and Svirskas, Rob and Takemura, Satoko and Tastekin, Ibrahim and Thomson, Alexander and Umayam, Lowell and Walsh, John J. and Whittome, Holly and Xu, C. Shan and Yakal, Emily A. and Yang, Tansy and Zhao, Arthur and George, Reed and Jain, Viren and Jayaraman, Vivek and Korff, Wyatt and Meissner, Geoffrey W. and Romani, Sandro and Funke, Jan and Knecht, Christopher and Saalfeld, Stephan and Scheffer, Louis K. and Waddell, Scott and Card, Gwyneth M. and Ribeiro, Carlos and Reiser, Michael B. and Hess, Harald F. and Rubin, Gerald M. and Jefferis, Gregory S.X.E.}},
+  journal   = {{Cell}},
+  volume    = {{189}},
+  number    = {{18}},
+  pages     = {{5504-5526.e15}},
+  year      = {{2026}},
+  month     = {{9}},
+  publisher = {{Elsevier}},
+  doi       = {{10.1016/j.cell.2026.08.015}},
+  url       = {{https://doi.org/10.1016/j.cell.2026.08.015}},
+  note      = {{Preprint: bioRxiv 10.1101/2025.10.09.680999. Data: MaleCNS v1.0, CC-BY 4.0, https://male-cns.janelia.org}}
+}}
+```
+
+## License
 
 The connectome is released under CC-BY 4.0 by the FlyEM Project Team (HHMI Janelia), the University of Cambridge,
 the MRC Laboratory of Molecular Biology, and Google Research. This checkpoint is a derivative and carries the same
-license. Cite the dataset paper:
-
-> Berg, S., Beckett, I. R., Costa, M., Schlegel, P., Januszewski, M., Marin, E. C., Nern, A., Preibisch, S., et al. (2026).
-> Sexual dimorphism in the complete *Drosophila* male central nervous system connectome. *Cell* 189, 5504–5526.e15.
-> https://doi.org/10.1016/j.cell.2026.08.015
+license.
 
 Prior art: [ngxson/fly-llm-hf](https://huggingface.co/ngxson/fly-llm-hf) (frozen MaleCNS reservoir LM) and
 [eob/gpt-fly](https://huggingface.co/eob/gpt-fly) (FlyWire-masked GPT-2). Code and experiment:
