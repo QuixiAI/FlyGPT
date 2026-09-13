@@ -217,6 +217,29 @@ rounded to 8 significant bits above. Label indices in `neuron.*` resolve through
 and `config.nt_labels`. `neurons.parquet` carries the full per-neuron annotation strings (type, instance,
 superclass, class, status, side, neuromere, dimorphism, fru/dsx, neurotransmitter, degrees).
 
+## How this differs from `ngxson/fly-llm-hf`
+
+MaleCNS is already on the Hub in [ngxson/fly-llm-hf](https://huggingface.co/ngxson/fly-llm-hf), so this is not the
+first packaging. It is a different layer of the stack: that repository is a **derived language model**; this one is
+the **source connectome**, unmodified. Facts about fly-llm-hf below are taken from its model card.
+
+| | this repository | `ngxson/fly-llm-hf` |
+|---|---|---|
+| Purpose | package MaleCNS losslessly for PyTorch / graph ML | a toy language model (echo-state reservoir) |
+| Source | official flat-connectome files from the Janelia bucket, md5-verified | MaleCNS as packaged by the Xenova fruit-fly-simulation space |
+| Scope | full CNS: {s['num_neurons']:,} traced neurons, {s['num_edges']:,} connections, subsets as masks | central brain only (cb_sensory, visual_projection, cb_intrinsic, ascending, descending): 49,393 neurons, 9,050,172 edges |
+| Edge values | exact synapse counts (int32); bf16 copy clearly marked as derived | signed synapse counts (ACh +1, GABA/glutamate −1, others 0), globally rescaled to spectral radius 0.99, plus a learned per-neuron gain |
+| Neurotransmitter data | separate per-neuron label + confidence tensors, not applied to the graph | used to assign the sign of every outgoing edge |
+| Dynamics | none (`forward` is one linear propagation step, for convenience) | leaky-tanh reservoir, `a = 0.9`, 8-token delay line into 14,069 sensory neurons |
+| Trainable parameters | none | input projection, per-neuron gains, LayerNorm + readout (52.8M); the connectome is frozen |
+| Tokenizer / task | none | byte-level BPE (1024) / TinyStories |
+| `transformers` role | `AutoModel` returning the graph | `AutoModelForCausalLM` generating text |
+
+```text
+Janelia MaleCNS v1.0 ──► this repository (lossless tensors) ──► FlyGPT (trains the fly's edge values on Shakespeare)
+Janelia MaleCNS v1.0 ──► Xenova packaging ──► fly-llm-hf (signed, rescaled, frozen reservoir + TinyStories readout)
+```
+
 ## Usage
 
 ```python
@@ -258,8 +281,7 @@ license; attribute the original authors:
 Official site: https://male-cns.janelia.org · neuPrint dataset `male-cns:v1.0`.
 
 This repository is the data backbone of [FlyGPT](https://github.com/QuixiAI/FlyGPT), which trains a language model
-whose recurrent architecture is a subgraph of this connectome. See also [ngxson/fly-llm-hf](https://huggingface.co/ngxson/fly-llm-hf)
-for a frozen-reservoir packaging of the central brain.
+whose recurrent architecture is a subgraph of this connectome.
 """
 
 
