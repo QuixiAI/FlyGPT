@@ -204,6 +204,29 @@ weights (sign, scale, normalization, random re-initialization) is a downstream m
 The release also ships a traced-only connectivity file. It is not packaged separately because it is exactly this table
 restricted to bodies with `status == Traced`; the build script checks that equality edge by edge.
 
+## How this differs from `ngxson/fly-llm-hf`
+
+MaleCNS is already on the Hub in [ngxson/fly-llm-hf](https://huggingface.co/ngxson/fly-llm-hf), so this is not the
+first packaging. It is a different layer of the stack: that repository is a **derived language model**; this one is
+the **source connectome**, unmodified. Facts about fly-llm-hf below are taken from its model card.
+
+| | this repository | `ngxson/fly-llm-hf` |
+|---|---|---|
+| Purpose | package MaleCNS losslessly for PyTorch / graph ML | a toy language model (echo-state reservoir) |
+| Source | official flat-connectome files from the Janelia bucket, md5-verified | MaleCNS as packaged by the Xenova fruit-fly-simulation space |
+| Scope | the full table: {s['num_neurons']:,} bodies, {s['num_edges']:,} connections; subsets as masks | central brain only (cb_sensory, visual_projection, cb_intrinsic, ascending, descending): 49,393 neurons, 9,050,172 edges |
+| Edge values | exact synapse counts (int32), file row order, untouched | signed synapse counts (ACh +1, GABA/glutamate −1, others 0), globally rescaled to spectral radius 0.99, plus a learned per-neuron gain |
+| Neurotransmitter data | the release table mirrored as separate tensors, not applied to the graph | used to assign the sign of every outgoing edge |
+| Dynamics | none (`forward` is one linear propagation step, for convenience) | leaky-tanh reservoir, `a = 0.9`, 8-token delay line into 14,069 sensory neurons |
+| Trainable parameters | none | input projection, per-neuron gains, LayerNorm + readout (52.8M); the connectome is frozen |
+| Tokenizer / task | none | byte-level BPE (1024) / TinyStories |
+| `transformers` role | `AutoModel` returning the graph | `AutoModelForCausalLM` generating text |
+
+```text
+Janelia MaleCNS v1.0 ──► this repository (synapse counts, untouched) ──► FlyGPT (its own trainable edge weights on the same topology)
+Janelia MaleCNS v1.0 ──► Xenova packaging ──► fly-llm-hf (signed, rescaled, frozen reservoir + TinyStories readout)
+```
+
 ## What is in `model.safetensors`
 
 | tensor | shape | dtype | size |
@@ -236,29 +259,6 @@ Documented convenience only: each subset is a list of release `superclass` value
 | neurotransmitter | bodies |
 |---|--:|
 {nts}
-
-## How this differs from `ngxson/fly-llm-hf`
-
-MaleCNS is already on the Hub in [ngxson/fly-llm-hf](https://huggingface.co/ngxson/fly-llm-hf), so this is not the
-first packaging. It is a different layer of the stack: that repository is a **derived language model**; this one is
-the **source connectome**, unmodified. Facts about fly-llm-hf below are taken from its model card.
-
-| | this repository | `ngxson/fly-llm-hf` |
-|---|---|---|
-| Purpose | package MaleCNS losslessly for PyTorch / graph ML | a toy language model (echo-state reservoir) |
-| Source | official flat-connectome files from the Janelia bucket, md5-verified | MaleCNS as packaged by the Xenova fruit-fly-simulation space |
-| Scope | the full table: {s['num_neurons']:,} bodies, {s['num_edges']:,} connections; subsets as masks | central brain only (cb_sensory, visual_projection, cb_intrinsic, ascending, descending): 49,393 neurons, 9,050,172 edges |
-| Edge values | exact synapse counts (int32), file row order, untouched | signed synapse counts (ACh +1, GABA/glutamate −1, others 0), globally rescaled to spectral radius 0.99, plus a learned per-neuron gain |
-| Neurotransmitter data | the release table mirrored as separate tensors, not applied to the graph | used to assign the sign of every outgoing edge |
-| Dynamics | none (`forward` is one linear propagation step, for convenience) | leaky-tanh reservoir, `a = 0.9`, 8-token delay line into 14,069 sensory neurons |
-| Trainable parameters | none | input projection, per-neuron gains, LayerNorm + readout (52.8M); the connectome is frozen |
-| Tokenizer / task | none | byte-level BPE (1024) / TinyStories |
-| `transformers` role | `AutoModel` returning the graph | `AutoModelForCausalLM` generating text |
-
-```text
-Janelia MaleCNS v1.0 ──► this repository (synapse counts, untouched) ──► FlyGPT (its own trainable edge weights on the same topology)
-Janelia MaleCNS v1.0 ──► Xenova packaging ──► fly-llm-hf (signed, rescaled, frozen reservoir + TinyStories readout)
-```
 
 ## Usage
 
