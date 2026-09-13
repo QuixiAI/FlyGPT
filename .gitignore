@@ -14,3 +14,4 @@ runs/
 results/*.png
 # raw MaleCNS release files (md5-verified re-download via data/fly/fetch_malecns.py)
 data/fly/raw/
+runs/launch_logs/
