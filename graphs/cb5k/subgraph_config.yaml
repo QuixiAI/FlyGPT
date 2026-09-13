@@ -1,0 +1,8 @@
+source: malecns-v1.0
+edges_path: data/fly/edges.parquet
+neurons_path: data/fly/neurons.parquet
+region_filter: central_brain
+target_neurons: 5000
+min_synapses: 3
+selector: directed_core
+retain_largest_scc: true

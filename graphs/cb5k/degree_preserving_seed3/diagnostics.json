@@ -1,0 +1,47 @@
+{
+  "provenance": {
+    "control": "degree_preserving",
+    "seed": 3,
+    "accepted_swaps": 5243240,
+    "edge_survival": 0.04276935635217919,
+    "survival_history": [
+      0.1603664909483449,
+      0.05704106621096879,
+      0.044197862390430345,
+      0.042336417940052336,
+      0.042143788954921005,
+      0.042271572539117036,
+      0.0425271397075091,
+      0.04204842807119262,
+      0.04226966532144247,
+      0.04276935635217919
+    ],
+    "second_shuffle_survival": 0.04202363424142324,
+    "plateau_agrees": true
+  },
+  "io": {
+    "n_input": 256,
+    "n_output": 512,
+    "input_rule": "top_out_degree",
+    "output_rule": "top_in_degree",
+    "overlap": 160
+  },
+  "diagnostics": {
+    "n_neurons": 5000,
+    "n_edges": 524324,
+    "largest_scc_fraction": 1.0,
+    "reciprocal_pairs": 8740,
+    "io_reachable_fraction": 1.0,
+    "io_path_median": 1.0,
+    "io_path_p90": 1.0,
+    "io_path_max": 1.0
+  },
+  "gate": {
+    "microsteps": 2,
+    "max_p90_hops": 6,
+    "min_reachable_fraction": 0.95,
+    "reachable_ok": true,
+    "p90_ok": true,
+    "passed": true
+  }
+}
