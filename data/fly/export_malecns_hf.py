@@ -189,8 +189,7 @@ presynaptic neuron's predicted neurotransmitter, rescales the whole matrix to a 
 projections, per-neuron gains, and a readout around it. Those are good modeling decisions for that project, but
 they are baked into its weights, so anyone who wants the connectome for something else has to undo them or go back
 to the raw release. This repository is the layer underneath: the **source connectome, unmodified**, so that
-fly-llm-hf, [FlyGPT](https://github.com/QuixiAI/FlyGPT), graph-ML work, and simulations can all start from the same
-lossless tensors. At a high level the differences are:
+fly-llm-hf, downstream models, graph-ML work, and simulations can all start from the same lossless tensors. At a high level the differences are:
 
 - **Whole nervous system, not a subset.** Every body in the release's connectivity file: brain, optic lobes, and
   ventral nerve cord, with subsets available as masks rather than chosen for you.
@@ -239,7 +238,7 @@ Facts about fly-llm-hf are taken from its model card.
 | `transformers` role | `AutoModel` returning the graph | `AutoModelForCausalLM` generating text |
 
 ```text
-Janelia MaleCNS v1.0 ──► this repository (synapse counts, untouched) ──► FlyGPT (its own trainable edge weights on the same topology)
+Janelia MaleCNS v1.0 ──► this repository (synapse counts, untouched) ──► your model (whatever weights you derive from them)
 Janelia MaleCNS v1.0 ──► Xenova packaging ──► fly-llm-hf (signed, rescaled, frozen reservoir + TinyStories readout)
 ```
 
@@ -296,7 +295,7 @@ incoming = cns(x)                                                # one propagati
 
 ## Provenance
 
-Built by [`data/fly/export_malecns_hf.py`](https://github.com/QuixiAI/FlyGPT) from these files in
+Built by the script [`data/fly/export_malecns_hf.py`](https://github.com/QuixiAI/FlyGPT/blob/main/data/fly/export_malecns_hf.py) from these files in
 `gs://flyem-male-cns/v1.0/connectome-data/flat-connectome/`, md5-verified against the bucket listing:
 
 | role | file | md5 (base64) |
@@ -351,8 +350,6 @@ license; attribution to the original authors (above) is required.
 
 Official site: https://male-cns.janelia.org · neuPrint dataset `male-cns:v1.0`.
 
-This repository is the data backbone of [FlyGPT](https://github.com/QuixiAI/FlyGPT), which trains a language model
-whose recurrent architecture is a subgraph of this connectome, with its own trainable edge weights.
 """
 
 
