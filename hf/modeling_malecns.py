@@ -1,38 +1,31 @@
 """The MaleCNS v1.0 fruit-fly connectome as a loadable PyTorch object.
 
-Not a language model and not a biological simulation: this is the anatomical wiring diagram
-(neurons, directed synaptic connections, synapse counts, coarse annotations) packaged so that
-`AutoModel.from_pretrained(..., trust_remote_code=True)` returns the graph as tensors.
+Not a language model and not a biological simulation. This is the release's connectivity table
+(segment-to-segment anatomical connection weights = synaptic contact counts) plus its neuron
+annotations and neurotransmitter predictions, mirrored losslessly into safetensors:
 
-    graph.edge_index      int32 [2, E]   (source, destination) as contiguous neuron indices
-    graph.synapse_count   int32 [E]      exact number of synaptic contacts per connection
-    graph.edge_weight_bf16 bf16 [E]     derived convenience copy of the counts (exact up to 256, then rounded)
-    graph.node_id         int64 [N]      MaleCNS body ids
-    neuron.region         int8  [N]      index into config.region_labels
-    neuron.superclass     int8  [N]      index into config.superclass_labels
-    neuron.status         int8  [N]      index into config.status_labels (Traced, Orphan, Glia, ...)
-    neuron.nt_class       int8  [N]      index into config.nt_labels (consensus neurotransmitter)
-    neuron.nt_confidence  bf16  [N]
+    neuron_id          int64   [N]   MaleCNS body id of neuron index i
+    edge_src           int32   [E]   presynaptic neuron index, in the release file's row order
+    edge_dst           int32   [E]   postsynaptic neuron index
+    synapse_count      int32   [E]   the release's `weight` column, untouched
+    neuron_status      int8    [N]   config.status_labels   (proofreading status from the annotations)
+    neuron_superclass  int8    [N]   config.superclass_labels
+    nt_neuron_index    int32   [M]   rows of the neurotransmitter table, as neuron indices
+    nt_class           int8    [M]   config.nt_labels       (the table's consensus_nt)
+    nt_confidence      float64 [M]   the table's predicted_nt_confidence
 
-`forward(state)` performs one linear propagation step `W @ state` with rows = destination,
-i.e. the summed synapse-weighted input every neuron receives from the given presynaptic activity.
+Nothing is signed, scaled, normalized, rounded, or initialized here. `forward(state)` is one linear
+propagation step `W @ state` with rows = destination, provided as a convenience; any neuron model,
+sign convention, or normalization is a downstream modeling choice.
 """
 from __future__ import annotations
 
 from typing import Optional
 
 import torch
-import torch.nn as nn
 from transformers import PreTrainedModel
 
 from .configuration_malecns import MaleCNSConfig
-
-
-class _Buffers(nn.Module):
-    def __init__(self, **tensors):
-        super().__init__()
-        for k, v in tensors.items():
-            self.register_buffer(k, v)
 
 
 class MaleCNSConnectome(PreTrainedModel):
@@ -42,83 +35,60 @@ class MaleCNSConnectome(PreTrainedModel):
 
     def __init__(self, config: MaleCNSConfig):
         super().__init__(config)
-        N, E = config.num_neurons, config.num_edges
-        self.graph = _Buffers(
-            edge_index=torch.zeros(2, E, dtype=torch.int32),
-            synapse_count=torch.zeros(E, dtype=torch.int32),
-            edge_weight_bf16=torch.zeros(E, dtype=torch.bfloat16),
-            node_id=torch.zeros(N, dtype=torch.int64),
-        )
-        self.neuron = _Buffers(
-            region=torch.zeros(N, dtype=torch.int8),
-            superclass=torch.zeros(N, dtype=torch.int8),
-            status=torch.zeros(N, dtype=torch.int8),
-            nt_class=torch.zeros(N, dtype=torch.int8),
-            nt_confidence=torch.zeros(N, dtype=torch.bfloat16),
-        )
+        N, E, M = config.num_neurons, config.num_edges, config.num_nt_rows
+        self.register_buffer("neuron_id", torch.zeros(N, dtype=torch.int64))
+        self.register_buffer("edge_src", torch.zeros(E, dtype=torch.int32))
+        self.register_buffer("edge_dst", torch.zeros(E, dtype=torch.int32))
+        self.register_buffer("synapse_count", torch.zeros(E, dtype=torch.int32))
+        self.register_buffer("neuron_status", torch.zeros(N, dtype=torch.int8))
+        self.register_buffer("neuron_superclass", torch.zeros(N, dtype=torch.int8))
+        self.register_buffer("nt_neuron_index", torch.zeros(M, dtype=torch.int32))
+        self.register_buffer("nt_class", torch.zeros(M, dtype=torch.int8))
+        self.register_buffer("nt_confidence", torch.zeros(M, dtype=torch.float64))
         self.post_init()
 
     def _init_weights(self, module):  # nothing is learned
         pass
 
-    # ---- basic accessors -----------------------------------------------------------------------
+    # ---- accessors -----------------------------------------------------------------------------
     @property
     def num_neurons(self) -> int:
         return self.config.num_neurons
 
-    @property
-    def src(self) -> torch.Tensor:
-        return self.graph.edge_index[0].long()
-
-    @property
-    def dst(self) -> torch.Tensor:
-        return self.graph.edge_index[1].long()
-
     def in_degree(self) -> torch.Tensor:
-        return torch.bincount(self.dst, minlength=self.num_neurons)
+        return torch.bincount(self.edge_dst.long(), minlength=self.num_neurons)
 
     def out_degree(self) -> torch.Tensor:
-        return torch.bincount(self.src, minlength=self.num_neurons)
+        return torch.bincount(self.edge_src.long(), minlength=self.num_neurons)
 
-    def region_mask(self, *names: str) -> torch.Tensor:
-        idx = [self.config.region_labels.index(n) for n in names]
-        return torch.isin(self.neuron.region, torch.tensor(idx, dtype=torch.int8))
+    def _label_mask(self, tensor: torch.Tensor, labels: list[str], names) -> torch.Tensor:
+        idx = torch.tensor([labels.index(n) for n in names], dtype=tensor.dtype)
+        return torch.isin(tensor, idx)
 
     def status_mask(self, *names: str) -> torch.Tensor:
-        idx = [self.config.status_labels.index(n) for n in names]
-        return torch.isin(self.neuron.status, torch.tensor(idx, dtype=torch.int8))
+        return self._label_mask(self.neuron_status, self.config.status_labels, names)
 
     def superclass_mask(self, *names: str) -> torch.Tensor:
-        idx = [self.config.superclass_labels.index(n) for n in names]
-        return torch.isin(self.neuron.superclass, torch.tensor(idx, dtype=torch.int8))
+        return self._label_mask(self.neuron_superclass, self.config.superclass_labels, names)
 
     def subset_mask(self, name: str) -> torch.Tensor:
-        """Named neuron subsets from config.subsets (full_cns, central_brain, optic_lobes, vnc, cb_sensory, ...)."""
+        """Named subsets from config.subsets (lists of release superclasses; 'all' = every neuron)."""
         spec = self.config.subsets[name]
-        if spec == "all":
-            return torch.ones(self.num_neurons, dtype=torch.bool)
-        return self.superclass_mask(*spec)
+        return torch.ones(self.num_neurons, dtype=torch.bool) if spec == "all" else self.superclass_mask(*spec)
 
-    # ---- the matrix ----------------------------------------------------------------------------
-    def edge_values(self, exact: bool = True, normalize: Optional[str] = None) -> torch.Tensor:
-        """Per-edge values in fp32. `exact` uses the int32 counts; otherwise the bf16 copy.
-        normalize: None | 'log1p' | 'in_degree' (divide by the destination's summed incoming synapses)."""
-        v = (self.graph.synapse_count if exact else self.graph.edge_weight_bf16).float()
-        if normalize == "log1p":
-            v = torch.log1p(v)
-        elif normalize == "in_degree":
-            tot = torch.zeros(self.num_neurons, dtype=torch.float32).index_add_(0, self.dst, v)
-            v = v / tot.clamp(min=1)[self.dst]
-        elif normalize is not None:
-            raise ValueError(normalize)
-        return v
+    def neuron_nt(self) -> tuple[torch.Tensor, torch.Tensor]:
+        """Per-neuron (nt_class, nt_confidence) scattered onto the N neurons; neurons without a
+        prediction row get class index of 'unclear' and confidence 0."""
+        cls = torch.full((self.num_neurons,), self.config.nt_labels.index("unclear"), dtype=torch.int8)
+        conf = torch.zeros(self.num_neurons, dtype=torch.float64)
+        i = self.nt_neuron_index.long()
+        cls[i], conf[i] = self.nt_class, self.nt_confidence
+        return cls, conf
 
-    def sparse_weight(self, exact: bool = True, normalize: Optional[str] = None, min_synapses: int = 1,
-                      nodes: Optional[torch.Tensor] = None) -> torch.Tensor:
-        """Sparse COO [N, N] with rows = destination, columns = source. `nodes` (bool mask or index
-        tensor) restricts to the induced subgraph and relabels to 0..k-1."""
-        src, dst, v = self.src, self.dst, self.edge_values(exact, normalize)
-        keep = self.graph.synapse_count >= min_synapses
+    # ---- the graph -----------------------------------------------------------------------------
+    def _restrict(self, nodes: Optional[torch.Tensor], min_synapses: int):
+        src, dst, cnt = self.edge_src.long(), self.edge_dst.long(), self.synapse_count
+        keep = cnt >= min_synapses
         n = self.num_neurons
         if nodes is not None:
             mask = nodes if nodes.dtype == torch.bool else torch.zeros(n, dtype=torch.bool).index_fill_(0, nodes.long(), True)
@@ -126,19 +96,22 @@ class MaleCNSConnectome(PreTrainedModel):
             new[mask] = torch.arange(int(mask.sum()))
             keep &= mask[src] & mask[dst]
             src, dst, n = new[src], new[dst], int(mask.sum())
-        return torch.sparse_coo_tensor(torch.stack([dst[keep], src[keep]]), v[keep], (n, n)).coalesce()
+            ids = self.neuron_id[mask]
+        else:
+            ids = self.neuron_id
+        return src[keep], dst[keep], cnt[keep], n, ids
 
     def subgraph(self, nodes: torch.Tensor, min_synapses: int = 1) -> dict:
-        """Induced subgraph as plain tensors: edge_index [2,E'] (relabelled), synapse_count [E'], node_id [k]."""
-        n = self.num_neurons
-        mask = nodes if nodes.dtype == torch.bool else torch.zeros(n, dtype=torch.bool).index_fill_(0, nodes.long(), True)
-        new = torch.full((n,), -1, dtype=torch.long)
-        new[mask] = torch.arange(int(mask.sum()))
-        keep = mask[self.src] & mask[self.dst] & (self.graph.synapse_count >= min_synapses)
-        return {"edge_index": torch.stack([new[self.src[keep]], new[self.dst[keep]]]),
-                "synapse_count": self.graph.synapse_count[keep], "node_id": self.graph.node_id[mask]}
+        """Induced subgraph as plain tensors: edge_src/edge_dst (relabelled 0..k-1), synapse_count, neuron_id."""
+        src, dst, cnt, n, ids = self._restrict(nodes, min_synapses)
+        return {"edge_src": src.int(), "edge_dst": dst.int(), "synapse_count": cnt, "neuron_id": ids}
 
-    def forward(self, state: torch.Tensor, exact: bool = True, normalize: Optional[str] = None) -> torch.Tensor:
-        """One propagation step: incoming[b, i] = sum_j W_ij state[b, j]. state: [B, N] -> [B, N], fp32."""
-        W = self.sparse_weight(exact, normalize)
-        return torch.sparse.mm(W, state.float().T).T
+    def sparse_weight(self, nodes: Optional[torch.Tensor] = None, min_synapses: int = 1,
+                      dtype: torch.dtype = torch.float32) -> torch.Tensor:
+        """Sparse COO [n, n] of raw synapse counts, rows = destination, columns = source."""
+        src, dst, cnt, n, _ = self._restrict(nodes, min_synapses)
+        return torch.sparse_coo_tensor(torch.stack([dst, src]), cnt.to(dtype), (n, n)).coalesce()
+
+    def forward(self, state: torch.Tensor, min_synapses: int = 1) -> torch.Tensor:
+        """One propagation step: incoming[b, i] = sum_j synapse_count_ij * state[b, j]. state [B, N] -> [B, N]."""
+        return torch.sparse.mm(self.sparse_weight(min_synapses=min_synapses), state.float().T).T
