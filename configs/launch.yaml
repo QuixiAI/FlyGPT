@@ -35,6 +35,7 @@ model:
   leak_init: 0.5
   degree_normalization: true
   embed_dim: 32
+  init_scale: 1.0               # spectral radius ≈ 1 at init on both real and scrambled graphs (decisions.md)
 
 sequence:
   context: 64

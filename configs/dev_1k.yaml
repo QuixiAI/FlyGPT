@@ -32,6 +32,7 @@ model:
   leak_init: 0.5
   degree_normalization: true
   embed_dim: 32
+  init_scale: 1.0               # spectral radius ≈ 1 at init on both real and scrambled graphs (decisions.md)
 
 sequence:
   context: 64
@@ -41,8 +42,8 @@ training:
   recurrent_lr: 0.001
   adapter_lr: 0.001
   batch_size: 16
-  steps: 3000
-  eval_every: 100
+  steps: 10000
+  eval_every: 250
 
 evaluation:
   seeds_dev: [1]
