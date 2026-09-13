@@ -18,6 +18,10 @@ flygpt/
 ├── plot.py                      # §9  launch chart from logs: val loss vs step / wall-clock / chars
 ├── generate.py                  # sample from a checkpoint
 ├── visualize.py                 # §17 static activity raster (sampled neurons, explanatory only)
+├── export_hf.py                 # FlyGPT graph/checkpoint -> Hugging Face repo (safetensors bf16 + trust_remote_code)
+├── hf/                          # self-contained HF model code copied into exported repos
+│   ├── configuration_flygpt.py, modeling_flygpt.py     # FlyGPTForCausalLM (state carried instead of a KV cache)
+│   └── configuration_malecns.py, modeling_malecns.py   # MaleCNSConnectome: lossless connectome tensors + subset masks
 │
 ├── flygpt/
 │   ├── config.py                # §13 schema as dataclasses
@@ -37,6 +41,7 @@ flygpt/
 ├── data/
 │   ├── shakespeare/split.json   # committed: corpus sha256, split boundary, vocab, unigram/bigram nats
 │   └── fly/                     # fetch_malecns.py -> build_edges.py -> edges.parquet + neurons.parquet (gitignored)
+│                                #   export_malecns_hf.py -> ~/malecns-hf (full traced connectome as a HF repo)
 │
 ├── graphs/<graph_name>/         # build_graph.py output. Committed: ids, config, hash, stats, diagnostics, gate.json.
 │   ├── subgraph_node_ids.txt    #   Gitignored: *.pt edge tensors (rebuildable, hash-checked).

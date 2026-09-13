@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 malecns = ["neuprint-python>=0.4"]
+hf = ["transformers>=5.0", "safetensors>=0.5", "tokenizers>=0.21"]
 demo = ["fastapi>=0.110", "uvicorn>=0.29"]
 
 [build-system]
