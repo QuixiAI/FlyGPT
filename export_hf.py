@@ -122,6 +122,9 @@ license: cc-by-4.0
 language: [en]
 library_name: transformers
 pipeline_tag: text-generation
+base_model: QuixiAI/MaleCNS
+base_model_relation: finetune
+datasets: [karpathy/tiny_shakespeare]
 tags: [connectome, fruit-fly, drosophila, malecns, recurrent, sparse, tiny-shakespeare, custom_code]
 ---
 
@@ -133,6 +136,10 @@ connectome** ([MaleCNS v1.0](https://male-cns.janelia.org/)). Unlike the earlier
 trains only the projections and readout, FlyGPT **trains one value per real synaptic connection with gradient
 descent** while keeping the fly's edge topology fixed, and compares the result against the same neurons with
 degree-preserving scrambled connections across paired seeds.
+
+**Base model: [QuixiAI/MaleCNS](https://huggingface.co/QuixiAI/MaleCNS)**, the lossless packaging of the MaleCNS v1.0
+connectivity tables. FlyGPT's graph is extracted from it deterministically (`build_graph.py`, revision pinned in
+`data/fly/build_edges.py`); `graph.node_id` and `graph.synapse_count` map every edge back to that repository.
 
 This checkpoint's wiring is {wiring}.
 

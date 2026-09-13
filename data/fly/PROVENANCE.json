@@ -1,0 +1,10 @@
+{
+  "source": "hf:QuixiAI/MaleCNS",
+  "revision": "6330780a4c8ab2519ce1c19b64aefced59581085",
+  "bodies": 88384522,
+  "edges": 151856684,
+  "annotation_rows": 191696,
+  "region_column": "superclass",
+  "self_loops_dropped": true,
+  "directed_edges": 151856561
+}

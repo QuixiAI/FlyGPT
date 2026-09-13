@@ -82,8 +82,8 @@ uv venv && uv pip install -e ".[dev]"
 pytest                                                  # sparse/dense, gradient reach, controls, gate, claim rule, e2e
 
 python prepare_data.py                                  # split.json + reference losses
-python data/fly/fetch_malecns.py                        # official bulk files -> data/fly/raw/ (md5-verified; --neuprint for the API)
-python data/fly/build_edges.py --region-column superclass   # check the printed superclass -> region crosstab
+python data/fly/build_edges.py                          # foundation: QuixiAI/MaleCNS (pinned revision) -> edges/neurons.parquet
+#   (python data/fly/fetch_malecns.py && python data/fly/export_malecns_hf.py --out ~/malecns-hf   rebuilds that Hub repo from the release)
 python build_graph.py configs/dev_1k.yaml               # must print "all gates passed"
 python train.py configs/dev_1k.yaml --condition frozen  # reservoir gate: must beat bigram
 python train.py configs/dev_1k.yaml --condition real    # 1k overfit gate
@@ -95,6 +95,13 @@ for k in 1 2 3; do
 done; wait
 python claim.py configs/launch.yaml --seeds 1 2 3       # dev look; the claim needs 5
 python evaluate.py configs/launch.yaml && python plot.py configs/launch.yaml
+
+# or all ten runs detached, two GPUs running two seeds back to back:
+scripts/launch_cb5k.sh configs/launch.yaml runs/launch_logs
+python claim.py configs/launch.yaml --seeds 1 2 3 4 5   # the §12 rule
+
+# publish (build order step 11): base_model QuixiAI/MaleCNS
+python export_hf.py --ckpt checkpoints/flygpt-v0/cb5k/real_seed1.pt --out ~/flygpt-hf --name QuixiAI/FlyGPT
 ```
 
 Smoke everything without MaleCNS: `python build_graph.py configs/launch.yaml --synthetic`.
