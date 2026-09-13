@@ -84,7 +84,7 @@ BibTeX:
 The connectome is consumed through its lossless Hub packaging, https://huggingface.co/QuixiAI/MaleCNS:
 
 ```bibtex
-@misc{quixiai2026malecns,
+@misc{hartford2026malecns,
   title        = {MaleCNS: the MaleCNS v1.0 fruit-fly connectome as lossless safetensors},
   author       = {Hartford, Eric},
   year         = {2026},

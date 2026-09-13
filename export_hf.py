@@ -211,7 +211,7 @@ If you use this model, please cite it, its base model, and the MaleCNS dataset p
 This model:
 
 ```bibtex
-@misc{{quixiai2026flygpt,
+@misc{{hartford2026flygpt,
   title        = {{FlyGPT: a language model whose recurrent architecture is a real subgraph of the fruit-fly connectome}},
   author       = {{Hartford, Eric}},
   year         = {{2026}},
@@ -224,7 +224,7 @@ This model:
 The base model (lossless connectome packaging):
 
 ```bibtex
-@misc{{quixiai2026malecns,
+@misc{{hartford2026malecns,
   title        = {{MaleCNS: the MaleCNS v1.0 fruit-fly connectome as lossless safetensors}},
   author       = {{Hartford, Eric}},
   year         = {{2026}},
