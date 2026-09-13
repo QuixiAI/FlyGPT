@@ -135,7 +135,7 @@ connectome packaging and the dataset paper:
   journal   = {Cell},
   volume    = {189},
   number    = {18},
-  pages     = {5504-5526.e15},
+  pages     = {5504--5526.e15},
   year      = {2026},
   doi       = {10.1016/j.cell.2026.08.015},
   url       = {https://doi.org/10.1016/j.cell.2026.08.015},
