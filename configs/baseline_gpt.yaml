@@ -1,0 +1,12 @@
+name: baseline_gpt
+model_type: gpt
+data:
+  task: shakespeare
+  seq_len: 64
+  batch_size: 32
+train:
+  steps: 20000
+  eval_every: 250
+  sample_every: 500
+  lr_recurrent: 3.0e-4
+  lr_adapters: 1.0e-3

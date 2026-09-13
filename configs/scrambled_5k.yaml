@@ -1,0 +1,23 @@
+# Control: identical to fly_5k.yaml except graph.scramble. Diff the two files to verify.
+name: scrambled_5k
+model_type: fly
+graph:
+  source: fly
+  n_neurons: 5000
+  n_input: 256
+  n_output: 512
+  io_rule: random
+  scramble: true
+model:
+  embed_dim: 32
+  microsteps: 1
+data:
+  task: shakespeare
+  seq_len: 64
+  batch_size: 32
+train:
+  steps: 20000
+  eval_every: 250
+  sample_every: 500
+  lr_recurrent: 3.0e-4
+  lr_adapters: 1.0e-3

@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/shakespeare/*
+!data/shakespeare/download.sh
+data/fly/*
+!data/fly/fetch_malecns.py
+!data/fly/build_edges.py
+checkpoints/*
+!checkpoints/.gitkeep
+runs/*
+!runs/.gitkeep
+*.egg-info/

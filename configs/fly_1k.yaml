@@ -1,0 +1,21 @@
+# Step 2: ~1k real fly neurons. Goal is to OVERFIT a tiny Shakespeare excerpt.
+name: fly_1k
+model_type: fly
+graph:
+  source: fly
+  n_neurons: 1000
+  n_input: 128
+  n_output: 256
+  io_rule: random
+model:
+  embed_dim: 32
+  microsteps: 1
+data:
+  task: shakespeare
+  max_chars: 5000
+  seq_len: 64
+  batch_size: 16
+train:
+  steps: 3000
+  eval_every: 100
+  sample_every: 250

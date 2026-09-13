@@ -1,0 +1,21 @@
+# Step 1: prove recurrent training works on a random graph before touching the fly.
+name: synthetic_300
+model_type: fly
+graph:
+  source: synthetic
+  n_neurons: 300
+  synthetic_density: 0.05
+  n_input: 32
+  n_output: 64
+model:
+  embed_dim: 16
+data:
+  task: delayed_copy
+  seq_len: 32
+  batch_size: 32
+train:
+  steps: 1000
+  eval_every: 100
+  sample_every: 500
+  lr_recurrent: 1.0e-3
+  lr_adapters: 1.0e-3
