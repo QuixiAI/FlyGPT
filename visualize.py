@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Static neural-activity raster for a prompt (README §17; sampled neurons, explanatory only).
+"""Static neural-activity raster for a prompt (plan.md §17; sampled neurons, explanatory only).
 
     python visualize.py --ckpt checkpoints/flygpt-v0/cb5k/real_seed1.pt --prompt "ROMEO:" --out results/activity.png
 """

@@ -1,4 +1,4 @@
-"""Tiny Shakespeare, char-level, fixed 90/10 split (README §2).
+"""Tiny Shakespeare, char-level, fixed 90/10 split (plan.md §2).
 
 `prepare_data.py` writes data/shakespeare/split.json: corpus sha256, split boundary,
 vocab, and measured unigram/bigram reference losses on the actual split. That file is

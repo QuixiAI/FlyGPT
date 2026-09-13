@@ -1,4 +1,4 @@
-"""Parameter-matched engineered baselines (README §11): tanh RNN, GRU, tiny Transformer.
+"""Parameter-matched engineered baselines (plan.md §11): tanh RNN, GRU, tiny Transformer.
 
 `match_hidden` picks the hidden size whose trainable parameter count is closest to a target,
 so each baseline can be matched to a FlyGPT config's total.

@@ -1,4 +1,4 @@
-"""MaleCNS v1.0 access (README §1).
+"""MaleCNS v1.0 access (plan.md §1).
 
 Two raw tables, produced by data/fly/fetch_malecns.py:
     data/fly/raw_neurons.parquet      bodyId, type, instance, and whatever region/annotation columns exist
@@ -8,7 +8,7 @@ and the two derived files this module reads:
     data/fly/neurons.parquet  body_id, type, instance, region
     data/fly/edges.parquet    src, dst, weight
 
-License and citation: README §1 (CC-BY 4.0; Berg et al. 2026, Cell). Region column: `superclass`
+License and citation: plan.md §1 (CC-BY 4.0; Berg et al. 2026, Cell). Region column: `superclass`
 (cb_* = central brain, vnc_* = ventral nerve cord, ol_* = optic lobe); the mapping lives in
 data/fly/build_edges.py and is logged there. `central_brain` filtering still raises when the
 derived neurons.parquet has no `region` column so a wrong pool cannot silently become "the fly brain".

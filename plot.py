@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Launch chart, regenerated from logs (README §9): val loss vs step, wall-clock, and characters seen.
+"""Launch chart, regenerated from logs (plan.md §9): val loss vs step, wall-clock, and characters seen.
 
     python plot.py configs/launch.yaml --out results/val_loss.png
 """

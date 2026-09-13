@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Apply the pre-registered paired-seed claim rule (README §12).
+"""Apply the pre-registered paired-seed claim rule (plan.md §12).
 
     python claim.py configs/launch.yaml [--control degree_preserving] [--seeds 1 2 3 4 5]
 """

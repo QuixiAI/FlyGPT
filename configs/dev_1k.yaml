@@ -1,4 +1,4 @@
-# README §15 "Before 1k -> 5k" gate: 1k RealFly must overfit a small Shakespeare excerpt to near-memorization.
+# plan.md §15 "Before 1k -> 5k" gate: 1k RealFly must overfit a small Shakespeare excerpt to near-memorization.
 # Identical to launch.yaml except target size, corpus truncation, and run length.
 project: flygpt-dev
 graph_name: cb1k

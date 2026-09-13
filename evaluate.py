@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Scoreboard (README §11): model, params, val loss mean ± range over seeds, notes.
+"""Scoreboard (plan.md §11): model, params, val loss mean ± range over seeds, notes.
 
     python evaluate.py configs/launch.yaml            # reads runs/, writes results/scoreboard.md
 """

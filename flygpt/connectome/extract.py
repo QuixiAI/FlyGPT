@@ -1,4 +1,4 @@
-"""Deterministic dense-core subgraph extraction (README §3).
+"""Deterministic dense-core subgraph extraction (plan.md §3).
 
 Random sampling is prohibited. The procedure is:
   A. filter edges by synapse count and region

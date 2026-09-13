@@ -1,4 +1,4 @@
-"""Controls (README §4). Every control uses exactly the real subgraph's neurons.
+"""Controls (plan.md §4). Every control uses exactly the real subgraph's neurons.
 
   degree_preserving  — directed double-edge swaps; in/out degree of every neuron preserved  (primary)
   uniform_random     — same N and E, endpoints fully random                                   (secondary)
@@ -82,7 +82,7 @@ def degree_preserving_rewire(g: EdgeGraph, seed: int, min_swap_factor: int = 10,
 
 
 def plateau_agrees(a: RewireResult, b: RewireResult, tol: float | None = None) -> bool:
-    """Two independent shuffles should land on the same survival fraction (README §4).
+    """Two independent shuffles should land on the same survival fraction (plan.md §4).
 
     Default tolerance: 4 binomial standard deviations of the survival fraction at this edge count,
     so a 700-edge test graph and a 500k-edge real graph are judged on the same footing."""

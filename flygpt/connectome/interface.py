@@ -1,4 +1,4 @@
-"""Input/output neuron selection by degree only (README §5).
+"""Input/output neuron selection by degree only (plan.md §5).
 
 Degree is identical across RealFly and DegreePreservedFly, so the selected sets are
 byte-identical across those two conditions. Ties break by node index, deterministically.

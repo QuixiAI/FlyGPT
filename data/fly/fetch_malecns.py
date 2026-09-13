@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Fetch the MaleCNS v1.0 connectivity and annotation tables (README §1).
+"""Fetch the MaleCNS v1.0 connectivity and annotation tables (plan.md §1).
 
 Two routes produce the same raw tables under data/fly/raw/:
 

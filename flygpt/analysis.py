@@ -1,4 +1,4 @@
-"""Paired-seed decision rule (README §12).
+"""Paired-seed decision rule (plan.md §12).
 
     Δ_k = loss(Scrambled_k) − loss(Real_k)
 

@@ -1,4 +1,4 @@
-"""Per-condition diagnostics and the path-length gate (README §4.1, §6).
+"""Per-condition diagnostics and the path-length gate (plan.md §4.1, §6).
 
 Run on every graph (real and each control) before training. The gate is go/no-go:
 a failing graph is fixed at the subgraph/interface level, never by tuning microsteps.
@@ -36,7 +36,7 @@ def diagnose(g: EdgeGraph, inputs: np.ndarray, outputs: np.ndarray) -> dict:
 
 
 def path_gate(diag: dict, microsteps: int, gate: GateConfig) -> dict:
-    """README §6: reachable fraction high, p90 path fits within `max_p90_chars` characters at `microsteps`."""
+    """plan.md §6: reachable fraction high, p90 path fits within `max_p90_chars` characters at `microsteps`."""
     max_hops = microsteps * gate.max_p90_chars
     ok_reach = diag["io_reachable_fraction"] >= gate.min_reachable_fraction
     ok_p90 = diag["io_path_p90"] is not None and diag["io_path_p90"] <= max_hops

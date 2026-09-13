@@ -1,7 +1,7 @@
 """FlyGPT: a character-level language model whose recurrent core is a real subgraph of the
 fruit-fly connectome (MaleCNS v1.0). Hugging Face `transformers` implementation; self-contained.
 
-Dynamics (one scalar state per neuron, README §7 of the FlyGPT spec):
+Dynamics (one scalar state per neuron, plan.md §7 of the FlyGPT spec):
 
     proposal_i = tanh( sum_j W_ij h_j / sqrt(in_degree_i) + external_input_i + bias_i )
     h_i_new    = (1 - leak_i) * h_i + leak_i * proposal_i

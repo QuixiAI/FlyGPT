@@ -1,6 +1,6 @@
 # Decisions log
 
-Spec v4 is frozen (README §21). Deviations and engineering choices made during runs are recorded
+Spec v4 is frozen (plan.md §21). Deviations and engineering choices made during runs are recorded
 here with the date and the run they first applied to, not as spec revisions.
 
 Informal expectations (e.g. "a plain tanh RNN lands around 1.7–2.0") may live here. They never

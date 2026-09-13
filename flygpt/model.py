@@ -1,4 +1,4 @@
-"""FlyRNN: batched sparse recurrence over the connectome (README §7, §8).
+"""FlyRNN: batched sparse recurrence over the connectome (plan.md §7, §8).
 
     proposal_i = tanh( normalized_recurrent_input_i + external_input_i + bias_i )
     h_i_new    = (1 - leak_i) * h_i + leak_i * proposal_i
@@ -148,7 +148,7 @@ class FlyRNN(nn.Module):
         self.train(was_training)
         return (out, torch.cat(states, 0)) if return_states else out
 
-    # ---- stability diagnostics (README §7) -----------------------------------------------------
+    # ---- stability diagnostics (plan.md §7) -----------------------------------------------------
     @torch.no_grad()
     def stability_stats(self, state: torch.Tensor) -> dict:
         a = state.abs()
@@ -172,7 +172,7 @@ def spectral_radius(model: FlyRNN, iters: int = 50, seed: int = 0) -> float:
 
 def make_frozen_fly(graph: EdgeGraph, inputs, outputs, vocab_size, mcfg: ModelConfig, scfg: SequenceConfig,
                     seed: int, target_radius: float = 0.95) -> FlyRNN:
-    """FrozenFly reservoir (README §11): fixed random-sign, degree-normalized weights scaled to ~target_radius.
+    """FrozenFly reservoir (plan.md §11): fixed random-sign, degree-normalized weights scaled to ~target_radius.
     Only the input adapter and readout train."""
     g = torch.Generator().manual_seed(seed)
     m = FlyRNN(graph, inputs, outputs, vocab_size, mcfg, scfg, edge_generator=g, frozen=True)

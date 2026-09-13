@@ -1,10 +1,10 @@
 # Repository layout
 
-Maps README spec v4 onto files. The README is the spec and stays frozen; this file is the map.
+Maps spec v4 (plan.md) onto files. plan.md is the spec and stays frozen; this file is the map.
 
 ```text
 flygpt/
-├── README.md                    # spec v4 (frozen)
+├── plan.md                      # spec v4 (frozen); README.md is the project front page
 ├── pyproject.toml
 ├── configs/
 │   ├── launch.yaml              # §13 — the one launch config, no grid

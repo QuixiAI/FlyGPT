@@ -13,7 +13,7 @@ Outputs (gitignored, rebuildable):
     data/fly/edges.parquet     src, dst, weight            (body ids, synapse count; self-loops dropped)
 
 The `region` mapping is the one place a wrong choice turns "fly brain" into "fly spinal cord"
-(README §3.1). In the v1.0 annotations the column that separates brain from nerve cord is
+(plan.md §3.1). In the v1.0 annotations the column that separates brain from nerve cord is
 `superclass`: values are prefixed cb_ (central brain), vnc_ (ventral nerve cord), ol_ (optic lobe);
 neurons that span compartments (ascending/descending, visual projection/centrifugal, ...) map to
 'other' and are excluded from a central_brain pool. The full superclass -> region table is printed;

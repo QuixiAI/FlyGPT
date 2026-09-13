@@ -1,4 +1,4 @@
-"""The launch config schema (README §13). One yaml, no grid.
+"""The launch config schema (plan.md §13). One yaml, no grid.
 
 Everything not expressible here is a follow-up experiment, not a launch option.
 """
@@ -90,7 +90,7 @@ class EvaluationConfig:
 
 @dataclass
 class GateConfig:
-    """Path-length gate (README §6). Thresholds are engineering choices; log them."""
+    """Path-length gate (plan.md §6). Thresholds are engineering choices; log them."""
     min_reachable_fraction: float = 0.95
     max_p90_chars: int = 3             # p90 I->O path must fit in this many characters at `microsteps`
 
