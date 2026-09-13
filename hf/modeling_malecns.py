@@ -10,6 +10,7 @@ Not a language model and not a biological simulation: this is the anatomical wir
     graph.node_id         int64 [N]      MaleCNS body ids
     neuron.region         int8  [N]      index into config.region_labels
     neuron.superclass     int8  [N]      index into config.superclass_labels
+    neuron.status         int8  [N]      index into config.status_labels (Traced, Orphan, Glia, ...)
     neuron.nt_class       int8  [N]      index into config.nt_labels (consensus neurotransmitter)
     neuron.nt_confidence  bf16  [N]
 
@@ -51,6 +52,7 @@ class MaleCNSConnectome(PreTrainedModel):
         self.neuron = _Buffers(
             region=torch.zeros(N, dtype=torch.int8),
             superclass=torch.zeros(N, dtype=torch.int8),
+            status=torch.zeros(N, dtype=torch.int8),
             nt_class=torch.zeros(N, dtype=torch.int8),
             nt_confidence=torch.zeros(N, dtype=torch.bfloat16),
         )
@@ -81,6 +83,10 @@ class MaleCNSConnectome(PreTrainedModel):
     def region_mask(self, *names: str) -> torch.Tensor:
         idx = [self.config.region_labels.index(n) for n in names]
         return torch.isin(self.neuron.region, torch.tensor(idx, dtype=torch.int8))
+
+    def status_mask(self, *names: str) -> torch.Tensor:
+        idx = [self.config.status_labels.index(n) for n in names]
+        return torch.isin(self.neuron.status, torch.tensor(idx, dtype=torch.int8))
 
     def superclass_mask(self, *names: str) -> torch.Tensor:
         idx = [self.config.superclass_labels.index(n) for n in names]

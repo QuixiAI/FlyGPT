@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 """Package the MaleCNS v1.0 traced connectome as a Hugging Face repo (safetensors + trust_remote_code).
 
-    python data/fly/export_malecns_hf.py --out ~/malecns-hf [--name QuixiAI/MaleCNS-v1.0]
+    python data/fly/export_malecns_hf.py --out ~/malecns-hf --table full            # canonical root: every segment
+    python data/fly/export_malecns_hf.py --out ~/malecns-hf/traced --table traced   # subset: traced neurons only
 
-Nodes are every traced body that has at least one connection in the release's traced-only weight table;
-edges are that table unchanged (self-loops kept, min synapses 1). Annotations are joined from the
+Nodes are every body with at least one connection in the chosen weight table; edges are that table unchanged
+(self-loops kept, min synapses 1). The traced subset equals the full table restricted to status == Traced, which
+`verify_subset` checks when both are present. Annotations are joined from the
 body-annotations and body-neurotransmitters tables. Every number in the model card is computed here.
 """
 from __future__ import annotations
@@ -25,8 +27,13 @@ sys.path.insert(0, str(ROOT))
 from data.fly.build_edges import region_from_superclass  # noqa: E402
 
 RAW = ROOT / "data/fly/raw"
+WEIGHT_TABLES = {
+    "traced": "connectome-weights-male-cns-v1.0-minconf-0.5-traced-only.feather",   # neuron-level graph (default)
+    "full": "connectome-weights-male-cns-v1.0-minconf-0.5.feather",                  # every segment, incl. fragments
+}
+STATUS_LABELS = ["Traced", "Orphan", "Glia", "Unimportant", "Assign", "Anchor", "unannotated"]
 FILES = {
-    "weights": "connectome-weights-male-cns-v1.0-minconf-0.5-traced-only.feather",
+    "weights": WEIGHT_TABLES["traced"],
     "annotations": "body-annotations-male-cns-v1.0-minconf-0.5.feather",
     "neurotransmitters": "body-neurotransmitters-male-cns-v1.0.feather",
 }
@@ -49,7 +56,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--name", default="MaleCNS-v1.0-connectome")
+    ap.add_argument("--table", choices=list(WEIGHT_TABLES), default="traced",
+                    help="traced: the release's traced-neuron table; full: the complete segment-to-segment table")
     args = ap.parse_args()
+    FILES["weights"] = WEIGHT_TABLES[args.table]
     out = Path(args.out).expanduser()
     out.mkdir(parents=True, exist_ok=True)
     md5 = dict(l.split()[::-1] for l in (RAW / "SOURCE.txt").read_text().splitlines()[1:] if l.strip())
@@ -69,6 +79,8 @@ def main():
     superclass = ann["superclass"].fillna("unannotated")
     superclass_labels = sorted(superclass.unique().tolist())
     region = superclass.map(region_from_superclass).where(superclass != "unannotated", "unannotated")
+    status = ann["status"].astype("string").fillna("unannotated") if "status" in ann.columns else pd.Series("unannotated", index=ann.index)
+    status = status.where(status.isin(STATUS_LABELS), "unannotated")
     nt = pd.read_feather(RAW / FILES["neurotransmitters"], columns=["body", "consensus_nt", "predicted_nt_confidence"])
     nt = nt.drop_duplicates("body").set_index("body").reindex(node_id)
     nt_class = nt["consensus_nt"].fillna("unclear")
@@ -82,6 +94,7 @@ def main():
         "graph.node_id": torch.from_numpy(node_id.astype(np.int64)).contiguous(),
         "neuron.region": torch.from_numpy(region.map(REGION_LABELS.index).to_numpy().astype(np.int8)).contiguous(),
         "neuron.superclass": torch.from_numpy(superclass.map(superclass_labels.index).to_numpy().astype(np.int8)).contiguous(),
+        "neuron.status": torch.from_numpy(status.map(STATUS_LABELS.index).to_numpy().astype(np.int8)).contiguous(),
         "neuron.nt_class": torch.from_numpy(nt_class.map(NT_LABELS.index).to_numpy().astype(np.int8)).contiguous(),
         "neuron.nt_confidence": torch.from_numpy(nt["predicted_nt_confidence"].fillna(0).to_numpy().astype(np.float32)).to(torch.bfloat16).contiguous(),
     }
@@ -100,6 +113,8 @@ def main():
         "region_breakdown": {k: int(region_counts.get(k, 0)) for k in REGION_LABELS},
         "superclass_breakdown": {k: int(v) for k, v in superclass.value_counts().items()},
         "neurotransmitter_breakdown": {k: int(v) for k, v in nt_class.value_counts().items()},
+        "status_breakdown": {k: int(v) for k, v in status.value_counts().items()},
+        "table": args.table,
     }
     # keep only superclasses that actually occur among connected traced neurons (e.g. *_tbc classes may not)
     subsets = {k: v if v == "all" else [c for c in v if c in superclass_labels] for k, v in SUBSETS.items()}
@@ -109,6 +124,7 @@ def main():
         "auto_map": {"AutoConfig": "configuration_malecns.MaleCNSConfig", "AutoModel": "modeling_malecns.MaleCNSConnectome"},
         "num_neurons": N, "num_edges": E, "num_self_loops": n_self, "min_synapses": 1, "release": "MaleCNS v1.0",
         "source_files": {k: {"file": v, "md5_base64": md5.get(v)} for k, v in FILES.items()},
+        "table": args.table, "status_labels": STATUS_LABELS,
         "region_labels": REGION_LABELS, "superclass_labels": superclass_labels, "nt_labels": NT_LABELS,
         "subsets": subsets, "stats": stats,
     }
@@ -119,13 +135,17 @@ def main():
     side = ann[[c for c in ["type", "instance", "superclass", "class", "status", "statusLabel", "somaSide", "somaNeuromere", "dimorphism", "fruDsx"] if c in ann.columns]].copy()
     side.insert(0, "body_id", node_id); side["region"] = region.to_numpy()
     side["consensus_nt"] = nt_class.to_numpy(); side["nt_confidence"] = nt["predicted_nt_confidence"].to_numpy()
-    side["in_degree"] = indeg; side["out_degree"] = outdeg
+    side["status"] = status.to_numpy(); side["in_degree"] = indeg; side["out_degree"] = outdeg
+    if args.table == "full":
+        side = side[status.to_numpy() != "unannotated"]
     for c in side.columns:
         if side[c].dtype.name == "category" or side[c].dtype == object:
             side[c] = side[c].astype("string")
     side.reset_index(drop=True).to_parquet(out / "neurons.parquet", index=False)
     (out / "README.md").write_text(model_card(args.name, config, tensors))
     verify_lossless(out, w)
+    if args.table == "traced" and (out.parent / "model.safetensors").exists():
+        verify_subset(out.parent, out)
     print(json.dumps({"out": str(out), **{k: stats[k] for k in ("num_neurons", "num_edges", "num_self_loops", "synaptic_contacts", "region_breakdown", "edges_at_min_synapses", "bf16_exact_fraction")},
                       "safetensors_mb": round((out / "model.safetensors").stat().st_size / 1e6, 1)}, indent=2))
 
@@ -144,6 +164,23 @@ def verify_lossless(out: Path, w: pd.DataFrame):
     print(f"lossless check passed: {len(a):,} edges identical to the release table")
 
 
+def verify_subset(full_dir: Path, traced_dir: Path):
+    """The traced variant must equal the full table restricted to bodies with status == Traced."""
+    from safetensors.torch import load_file
+    f, tr = load_file(full_dir / "model.safetensors"), load_file(traced_dir / "model.safetensors")
+    labels = json.loads((full_dir / "config.json").read_text())["status_labels"]
+    traced = f["neuron.status"] == labels.index("Traced")
+    src, dst = f["graph.edge_index"][0].long(), f["graph.edge_index"][1].long()
+    keep = traced[src] & traced[dst]
+    ids = f["graph.node_id"]
+    a = torch.stack([ids[src[keep]], ids[dst[keep]], f["graph.synapse_count"][keep].long()], 1)
+    tids = tr["graph.node_id"]
+    b = torch.stack([tids[tr["graph.edge_index"][0].long()], tids[tr["graph.edge_index"][1].long()], tr["graph.synapse_count"].long()], 1)
+    a = a[torch.argsort(a[:, 0] * (1 << 40) + a[:, 1])]; b = b[torch.argsort(b[:, 0] * (1 << 40) + b[:, 1])]
+    assert a.shape == b.shape and torch.equal(a, b), "traced variant != full table restricted to Traced bodies"
+    print(f"subset check passed: traced variant == full table restricted to status==Traced ({len(b):,} edges)")
+
+
 def model_card(name: str, config: dict, tensors: dict) -> str:
     s = config["stats"]
     rows = "\n".join(f"| `{k}` | {tuple(v.shape)} | {str(v.dtype).replace('torch.', '')} | {v.numel() * v.element_size() / 1e6:.1f} MB |"
@@ -151,7 +188,19 @@ def model_card(name: str, config: dict, tensors: dict) -> str:
     regions = "\n".join(f"| {k} | {v:,} |" for k, v in s["region_breakdown"].items())
     thr = " · ".join(f"≥{t}: {n:,}" for t, n in s["edges_at_min_synapses"].items())
     nts = "\n".join(f"| {k} | {v:,} |" for k, v in s["neurotransmitter_breakdown"].items())
+    statuses = "\n".join(f"| {k} | {v:,} |" for k, v in s["status_breakdown"].items())
     files = "\n".join(f"| `{v['file']}` | `{v['md5_base64']}` |" for v in config["source_files"].values())
+    variant_note = (
+        "**This is the canonical, complete table**: every body with a synapse in the release's segment-to-segment "
+        "connectivity file, including unproofread fragments, orphans and glia. `neuron.status` (`config.status_labels`) "
+        "marks which bodies are traced neurons. The traced-neuron graph most users want is the [`traced/`](./traced) "
+        "subfolder (`AutoModel.from_pretrained(repo, subfolder=\"traced\", trust_remote_code=True)`, 360 MB); it equals "
+        "this table restricted to `status == Traced`, and the build verified that equality edge by edge."
+        if s["table"] == "full" else
+        "**Subset variant `traced`**: the release's traced-neuron table (`connectome-weights-...-traced-only.feather`). "
+        "It is exactly the repository's canonical full table (one level up) restricted to bodies with `status == Traced`; "
+        "the build verified that equality edge by edge. Use this if you want neurons and not segment fragments."
+    )
     subsets = "\n".join(f"| `{k}` | {s['subset_sizes'][k]:,} | {'all neurons' if v == 'all' else ', '.join(v)} |" for k, v in config["subsets"].items())
     return f"""---
 license: cc-by-4.0
@@ -174,9 +223,11 @@ The build script re-reads the saved tensors and checks them against the release 
 Subsets (central brain, optic lobes, nerve cord, sensory, ascending, descending, ...) are provided as masks so that
 downstream users, not this repository, decide what "the model" is.
 
+{variant_note}
+
 | | |
 |---|---|
-| Neurons (traced bodies with ≥ 1 connection) | {s['num_neurons']:,} |
+| {'Neurons (traced bodies with ≥ 1 connection)' if s['table'] == 'traced' else 'Segments (every body in the full table)'} | {s['num_neurons']:,} |
 | Directed connections | {s['num_edges']:,} (of which {s['num_self_loops']:,} autapses, kept) |
 | Synaptic contacts represented | {s['synaptic_contacts']:,} |
 | Synapse count per connection | {s['synapse_count_min']} – {s['synapse_count_max']:,} |
@@ -203,6 +254,12 @@ ventral nerve cord; neurons spanning compartments (ascending, descending, visual
 | neurotransmitter | neurons |
 |---|--:|
 {nts}
+
+## Proofreading status (`neuron.status`)
+
+| status | bodies |
+|---|--:|
+{statuses}
 
 ## What is in `model.safetensors`
 
@@ -265,8 +322,8 @@ Built by [`data/fly/export_malecns_hf.py`](https://github.com/QuixiAI/FlyGPT) fr
 |---|---|
 {files}
 
-The traced-only weight table is the neuron-level graph (the full table also contains ~88M unproofread segment
-fragments). Neurotransmitter labels are the release's per-neuron `consensus_nt` with its prediction confidence.
+The full table (repository root) is the complete segment-to-segment graph; the traced-only table (`traced/`) is
+its restriction to proofread neurons, which the build checks explicitly. Neurotransmitter labels are the release's per-neuron `consensus_nt` with its prediction confidence.
 
 ## License and citation
 

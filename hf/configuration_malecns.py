@@ -17,6 +17,8 @@ class MaleCNSConfig(PretrainedConfig):
         superclass_labels: list[str] | None = None,
         nt_labels: list[str] | None = None,
         subsets: dict | None = None,
+        table: str = "traced",
+        status_labels: list[str] | None = None,
         stats: dict | None = None,
         **kwargs,
     ):
@@ -30,5 +32,7 @@ class MaleCNSConfig(PretrainedConfig):
         self.superclass_labels = superclass_labels or []
         self.nt_labels = nt_labels or []
         self.subsets = subsets or {}
+        self.table = table
+        self.status_labels = status_labels or []
         self.stats = stats or {}
         super().__init__(**kwargs)
