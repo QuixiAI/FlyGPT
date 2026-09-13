@@ -121,7 +121,7 @@ connectome packaging and the dataset paper:
 
 ```bibtex
 @misc{hartford2026malecns,
-  title        = {MaleCNS: the MaleCNS v1.0 fruit-fly connectome as lossless safetensors},
+  title        = {QuixiAI/MaleCNS: the MaleCNS v1.0 fruit-fly connectome as lossless Safetensors},
   author       = {Hartford, Eric},
   year         = {2026},
   publisher    = {Hugging Face},
