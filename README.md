@@ -70,7 +70,10 @@ bigram reference losses are committed in `data/shakespeare/split.json`.
   [QuixiAI/FlyGPT](https://huggingface.co/QuixiAI/FlyGPT).
 - **Whole nervous system** (160,514 traced neurons, 10.4M connections, `configs/full_cns.yaml`): graph built, all
   gates pass, training in progress on 6 GPUs with data parallelism.
-- Parameter-matched baselines (RNN, GRU, transformer): in progress.
+- **Parameter-matched baselines (RNN, GRU, transformer, 3 seeds each, ~578k parameters): done.** Best validation loss
+  GRU 1.522, transformer 1.548, dense RNN 1.581, FlyGPT 1.587. Every dense baseline then overfits badly (final losses
+  1.72 to 2.05) while the fly graph stays within 0.02 of its best: at this size the connectome buys no accuracy, but
+  its fixed sparse wiring is a strong regularizer. Full table: `results/scoreboard.md`.
 
 ## Quickstart
 
