@@ -47,6 +47,7 @@ class ModelConfig:
     degree_normalization: bool = True
     embed_dim: int = 32
     init_scale: float = 0.1
+    backend: str = "cuda"              # "cuda": fused kernels (flygpt/kernels.py) when available; "torch": sparse COO path
 
 
 @dataclass

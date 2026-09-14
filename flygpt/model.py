@@ -111,10 +111,41 @@ class FlyRNN(nn.Module):
     def logits(self, state: torch.Tensor) -> torch.Tensor:
         return self.readout(state[:, self.output_nodes])
 
+    # ---- fused CUDA path (flygpt/kernels.py) ---------------------------------------------------
+    def _csr_graph(self):
+        """CSR structure for the fused kernels, built once per device."""
+        from .kernels import CSRGraph
+        dev = self.indices.device
+        if getattr(self, "_csr", None) is None or self._csr_device != dev:
+            self._csr = CSRGraph(self.indices[1], self.indices[0], self.n, self.input_nodes)
+            self._csr_device = dev
+        return self._csr
+
+    def _use_kernels(self, device) -> bool:
+        if self.mcfg.backend != "cuda" or device.type != "cuda":
+            return False
+        if not hasattr(self, "_kernels_ok"):
+            from .kernels import available
+            self._kernels_ok = available()
+            if not self._kernels_ok:
+                import warnings
+                warnings.warn("FlyGPT fused CUDA kernels unavailable (no nvcc?); falling back to the sparse COO path")
+        return self._kernels_ok
+
+    def forward_fused(self, tokens: torch.Tensor, state: torch.Tensor):
+        from .kernels import FlyRecurrence
+        drives = self.inp(self.embed(tokens)).float().permute(1, 2, 0).contiguous()      # [T, n_in, B]
+        out = FlyRecurrence.apply(self.effective_values().float(), self.leak, self.bias, drives, state,
+                                  self._csr_graph(), self.scfg.microsteps)               # [T, B, N]
+        logits = self.readout(out[:, :, self.output_nodes]).permute(1, 0, 2)             # [B, T, V]
+        return logits, out[-1]
+
     def forward(self, tokens: torch.Tensor, state: torch.Tensor | None = None):
         """tokens [B, T] -> logits [B, T, V], final state [B, N]. State is zeros at sequence boundaries."""
         B, T = tokens.shape
         state = self.init_state(B, tokens.device) if state is None else state
+        if self._use_kernels(tokens.device):
+            return self.forward_fused(tokens, state)
         W = self.sparse_weight()  # build once per forward
         outs = []
         for t in range(T):

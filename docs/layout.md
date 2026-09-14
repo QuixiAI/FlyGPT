@@ -34,7 +34,9 @@ flygpt/
 │   │   ├── interface.py         # §5  I/O by degree only
 │   │   ├── diagnostics.py       # §4.1/§6 SCC, reciprocity, I→O path lengths, gate
 │   │   └── synthetic.py         # fake connectome for tests and smoke runs
-│   ├── model.py                 # §7/§8 FlyRNN: sparse.mm rows=dst, learned leak, degree norm, dense reference; FrozenFly
+│   ├── model.py                 # §7/§8 FlyRNN: fused CUDA path (default) or sparse.mm rows=dst; learned leak, degree norm, dense reference; FrozenFly
+│   ├── kernels.py               # §8 fused CUDA recurrence (autograd Function over a T×microsteps window) + CSR structure
+│   ├── csrc/fly_recurrence.cu   # the kernels: 1 fused forward + 3 backward per microstep, JIT-built with nvcc
 │   ├── baselines.py             # §11 tanh RNN / GRU / tiny Transformer, parameter matching
 │   ├── analysis.py              # §12 Δ_k, sign test, min effect
 │   └── checkpoint.py
