@@ -124,28 +124,31 @@ asks the network to keep two things separate**, so segregation has no value to i
 degree alone (`plan.md` §5) specifically so that a real-wiring win could not be an artifact of port placement.
 That choice also made the experiment blind to modularity.
 
-## 5. Scale did not help
+## 5. Scale: non-monotonic, and unresolved
 
-| graph | neurons | edges | best val | status |
+| graph | neurons | edges | best val | basis |
 |---|--:|--:|--:|---|
-| cb5k, central-brain core | 5,000 | 524,324 | **1.578** | final, 5 paired seeds |
-| cb10k, central-brain core | 10,000 | 1,039,667 | 1.635 | **provisional**, mid-run |
-| cns_full, whole nervous system | 160,514 | 10,402,842 | 1.596 | final, 1 seed |
+| cb5k, central-brain core | 5,000 | 524,324 | 1.587 (real), 1.591 (scrambled) | 5 paired seeds, complete |
+| cb10k, central-brain core | 10,000 | 1,039,667 | 1.561 (scrambled only) | 1 seed, complete; real half killed at 43% |
+| cns_full, whole nervous system | 160,514 | 10,402,842 | 1.596 (real) | 1 seed, complete |
 
-Eighteen times the neurons and twenty times the synapses made the model slightly worse. The whole nervous
-system ended at train loss 1.333 against validation 1.596, so it is overfitting a 1.1-million-character
-corpus, and it reached its best at step 15,375 of 16,700 after seeing about 200 epochs.
+On the one seed and condition where 5k and 10k can be compared directly, degree-preserving at seed 1, doubling
+the neuron count helped: 1.5816 at 5k against 1.5613 at 10k. The whole nervous system, at eighteen times the
+5k neuron count, came out at 1.596, slightly worse than the 5k real mean of 1.587.
 
-The conclusion is that **the binding constraint is the 64-character context window and the size of Tiny
-Shakespeare, not the model's capacity.** More neurons cannot help a model that already fits the training text
-better than the held-out text. Reaching coherent multi-line text needs a longer context and more data, not a
-larger graph.
+So the honest statement is that **the ladder is non-monotonic and we did not finish measuring it.** Going from
+5k to 10k improved the model; going to the whole connectome did not. The 10k real run was stopped at 43%, so
+no paired difference exists at that rung, and every entry past 5k is a single seed.
 
-Generation quality nonetheless reads better at 160k neurons than at 5k, with correctly spelled rare characters
-from across the canon and more grammatical lines, which is a reminder that validation loss at this resolution
-is a coarse instrument.
+What is solid is the overfitting evidence. The whole nervous system ended at train loss 1.333 against
+validation 1.596 after about 200 epochs of a 1.1-million-character corpus. A model that fits the training text
+that much better than held-out text is not capacity-limited, which is why more neurons stopped paying at the
+top of the ladder. Reaching coherent multi-line text plausibly needs a longer context and more data, but that
+is a hypothesis this project did not test.
 
-The whole-CNS degree-preserving control is a single seed and, by `plan.md` §12, no wiring claim rests on it.
+Generation quality reads better at 160k neurons than at 5k, with correctly spelled rare characters from across
+the canon and more grammatical lines, which is a reminder that validation loss at this resolution is a coarse
+instrument.
 
 ## 6. What we would test next
 

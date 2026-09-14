@@ -4,7 +4,7 @@ Living document for an agent taking over this work. Updated at every milestone; 
 last update. Read it top to bottom before touching anything, then read `plan.md` (the frozen spec),
 `notes/decisions.md` (every engineering decision since the freeze, append-only), and `docs/layout.md`.
 
-**Last updated: 2026-09-14 04:01 UTC.** Read `conclusions.md` for the findings and `plan_v1.md` for the
+**Last updated: 2026-09-14 04:05 UTC. All runs stopped at the user's request; every GPU is idle.** Read `conclusions.md` for the findings and `plan_v1.md` for the
 proposed next experiment; this file is operational state only. The user stopped active work at this point.
 
 ## 1. What this project is, in one paragraph
@@ -42,57 +42,39 @@ Citation keys: `hartford2026malecns` (data), `berg2026malecns` (paper), `hartfor
   1,765 direct optic-to-central-brain edges vs 1,455,916 scrambled. Measured, in `conclusions.md` §4.
 - Reference losses on our split: unigram 3.347, bigram 2.482 (`data/shakespeare/split.json`).
 
-## 4. Running right now (2026-09-14 04:01 UTC)
+## 4. Nothing is running
 
-All jobs are detached (`setsid nohup`) and survive session loss. Stdout logs in `runs/launch_logs/`; per-step
-JSON in `runs/<project>/<graph>/<condition>_seed<k>/log.jsonl`; best-val checkpoints in `checkpoints/`.
-Queue events append to `runs/launch_logs/queue.log`. A run is finished when its stdout log contains a line
-starting with `done.`.
+All training was stopped at 2026-09-14 04:05 UTC at the user's request. All eight GPUs are idle and no queue
+scripts remain. Two runs were killed mid-flight:
 
-| GPUs | job | launcher | state at last update | expected finish |
-|---|---|---|---|---|
-| 2–7 | whole CNS **degree_preserving seed 1**, `configs/full_cns.yaml`, DDP world=6 | `scripts/launch_cns_ddp.sh` | step 1,249 / 16,700 | ~06:05 UTC |
-| 0 | **cb10k real seed 1**, `configs/scale_10k.yaml` | `scripts/launch_followups.sh` | step 39,927 / 100,000, best 1.6345 | ~04:35 UTC |
-| 1 | **cb10k degree_preserving seed 1** | same | step 97,982 / 100,000, best 1.5613 | ~04:02 UTC |
+| job | where it got to | usable? |
+|---|---|---|
+| whole CNS degree_preserving seed 1 | step ~1,300 / 16,700 | no; delete `runs/flygpt-v0-fullcns/cns_full/degree_preserving_seed1` and rerun if wanted |
+| cb10k real seed 1 | step 42,876 / 100,000, best 1.6345 | partial log and best-val checkpoint exist; not comparable to the completed 100k runs |
 
-Everything else is done: cb5k 20k and 100k (5 paired seeds each), all three engineered baselines (3 seeds),
-FrozenFly (3 seeds), and the whole-CNS real run (published).
+Completed and recorded: cb5k at 20k and 100k steps (5 paired seeds each), all three engineered baselines
+(3 seeds), FrozenFly (3 seeds), the whole-CNS real run (published to the Hub), and cb10k degree_preserving
+seed 1 (best 1.5613).
 
-Check progress:
+To resume, the launchers are `scripts/launch_cb5k.sh`, `scripts/launch_baselines.sh`,
+`scripts/launch_cns_ddp.sh`, and `scripts/launch_followups.sh`. Each is detached and idempotent apart from
+overwriting its own run directory.
 
-```bash
-cd ~/FlyGPT && source ~/.venv/bin/activate
-nvidia-smi --query-gpu=index,memory.used,utilization.gpu --format=csv,noheader
-ps -eo args | awk '$1 ~ /python$/ && /train.py/' | sed 's/.*train.py //'
-tail -5 runs/launch_logs/queue.log
-```
+## 5. The two loose ends
 
-To stop everything cleanly:
+**The 10k rung of the scaling ladder is half-measured.** `cb10k degree_preserving seed 1` finished at best
+1.5613, which is 0.020 *better* than `cb5k degree_preserving seed 1` at 1.5816. The real half was killed at
+43%. Finishing it (`CUDA_VISIBLE_DEVICES=0 python train.py configs/scale_10k.yaml --condition real --seed 1`,
+about 50 minutes) would give the one paired difference at 10k and settle whether the improvement holds for the
+real graph. This is the cheapest remaining piece of real information in the project.
 
-```bash
-ps -eo pid,args | awk '$2 ~ /bash$/ && /launch_(cns_ddp|followups|cb5k|baselines)\.sh/ && !/awk/ {print $1}' | xargs -r kill
-ps -eo pid,args | awk '$2 ~ /python$/ && /train\.py/ {print $1}' | xargs -r kill
-```
+**The whole-CNS wiring comparison does not exist.** Its control was killed almost immediately. A single paired
+run at that scale costs about 2.2 hours on 6 GPUs per condition, and by `plan.md` §12 one seed supports no
+claim either way.
 
-Partial runs leave a usable `log.jsonl` and a best-val checkpoint; `evaluate.py` ignores them unless given
-`--include-partial`.
-
-## 5. What to do when each remaining job lands
-
-**cb10k pair** (both seeds, 100k steps): `python evaluate.py configs/scale_10k.yaml`,
-`python plot.py configs/scale_10k.yaml --out results/val_loss_cb10k.png`, compute the one paired Δ from the two
-`log.jsonl` files, and log it in `notes/decisions.md` as the second rung of the §14 scaling ladder. Then
-finalize the cb10k row in `conclusions.md` §5, which is currently marked provisional. Note the expectation
-being tested: cb10k looked *worse* than cb5k mid-run, consistent with the §5 conclusion that context and data
-bind rather than capacity.
-
-**Whole-CNS scrambled**: compute the single paired Δ against the real run (best and final val) and record it in
-`notes/decisions.md` as a dev look, with the words "one seed; the §12 rule needs five". Do not word it as a
-result. Optionally publish it to `QuixiAI/FlyGPT` under `full-cns-scrambled/` following the pattern used for
-`full-cns` (hand-written result note, since the five-seed section only renders for cb5k).
-
-**Then**: regenerate `results/scoreboard.md`, update README "Status", push. A scaling-ladder plot (best val vs
-neuron count across 5k / 10k / 160k) would finish the §14 story and is not yet written.
+Neither gap is reflected in any published artifact: `conclusions.md` §5 states plainly that the ladder is
+non-monotonic and unfinished, and the Hub card for `full-cns` states that it is one seed with no five-seed
+claim.
 
 ## 6. How to run things
 
