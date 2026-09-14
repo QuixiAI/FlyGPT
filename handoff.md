@@ -4,7 +4,8 @@ Living document for an agent taking over this work. Updated at every milestone; 
 last update. Read it top to bottom before touching anything, then read `plan.md` (the frozen spec),
 `notes/decisions.md` (every engineering decision since the freeze, append-only), and `docs/layout.md`.
 
-**Last updated: 2026-09-14 03:25 UTC.** Read `conclusions.md` for the findings; this file is operational state only.
+**Last updated: 2026-09-14 04:01 UTC.** Read `conclusions.md` for the findings and `plan_v1.md` for the
+proposed next experiment; this file is operational state only. The user stopped active work at this point.
 
 ## 1. What this project is, in one paragraph
 
@@ -41,18 +42,21 @@ Citation keys: `hartford2026malecns` (data), `berg2026malecns` (paper), `hartfor
   1,765 direct optic-to-central-brain edges vs 1,455,916 scrambled. Measured, in `conclusions.md` §4.
 - Reference losses on our split: unigram 3.347, bigram 2.482 (`data/shakespeare/split.json`).
 
-## 4. Running right now (2026-09-14 02:54 UTC)
+## 4. Running right now (2026-09-14 04:01 UTC)
 
 All jobs are detached (`setsid nohup`) and survive session loss. Stdout logs in `runs/launch_logs/`; per-step
 JSON in `runs/<project>/<graph>/<condition>_seed<k>/log.jsonl`; best-val checkpoints in `checkpoints/`.
-Queue events append to `runs/launch_logs/queue.log`.
+Queue events append to `runs/launch_logs/queue.log`. A run is finished when its stdout log contains a line
+starting with `done.`.
 
 | GPUs | job | launcher | state at last update | expected finish |
 |---|---|---|---|---|
-| 2–7 | **whole nervous system, real**, `configs/full_cns.yaml`, torchrun DDP world=6, global batch 192, 16,700 steps | `scripts/launch_cns_ddp.sh` | step 9,448, best val 1.6575 @ 8,750, ~0.48 s/step | ~03:55 UTC |
-| 2–7 | whole nervous system, **degree_preserving seed 1** | same script, starts automatically after real | not started | ~06:10 UTC |
-| 0 | FrozenFly seed 1, then seed 3, then **cb10k real seed 1** (`configs/scale_10k.yaml`) | `scripts/launch_followups.sh` | frozen_seed1 at step ~42k of 100k | frozen ~03:10; 10k real ~04:45 |
-| 1 | FrozenFly seed 2, then **cb10k degree_preserving seed 1** | same | frozen_seed2 at step ~42k | 10k dp ~04:30 |
+| 2–7 | whole CNS **degree_preserving seed 1**, `configs/full_cns.yaml`, DDP world=6 | `scripts/launch_cns_ddp.sh` | step 1,249 / 16,700 | ~06:05 UTC |
+| 0 | **cb10k real seed 1**, `configs/scale_10k.yaml` | `scripts/launch_followups.sh` | step 39,927 / 100,000, best 1.6345 | ~04:35 UTC |
+| 1 | **cb10k degree_preserving seed 1** | same | step 97,982 / 100,000, best 1.5613 | ~04:02 UTC |
+
+Everything else is done: cb5k 20k and 100k (5 paired seeds each), all three engineered baselines (3 seeds),
+FrozenFly (3 seeds), and the whole-CNS real run (published).
 
 Check progress:
 
@@ -61,36 +65,34 @@ cd ~/FlyGPT && source ~/.venv/bin/activate
 nvidia-smi --query-gpu=index,memory.used,utilization.gpu --format=csv,noheader
 ps -eo args | awk '$1 ~ /python$/ && /train.py/' | sed 's/.*train.py //'
 tail -5 runs/launch_logs/queue.log
-for f in runs/*/*/*/log.jsonl; do python3 -c "
-import json; rows=[json.loads(l) for l in open('$f')]; r=rows[-1]; ev=[x for x in rows if 'val_loss' in x]
-print('$f'.split('/')[-2].ljust(26), 'step', r['step'], 'best', round(min(x['val_loss'] for x in ev),4) if ev else None)"; done
 ```
 
-A run is finished when its stdout log in `runs/launch_logs/` contains a line starting with `done.`.
+To stop everything cleanly:
 
-## 5. What to do when each job lands
+```bash
+ps -eo pid,args | awk '$2 ~ /bash$/ && /launch_(cns_ddp|followups|cb5k|baselines)\.sh/ && !/awk/ {print $1}' | xargs -r kill
+ps -eo pid,args | awk '$2 ~ /python$/ && /train\.py/ {print $1}' | xargs -r kill
+```
 
-**Whole-CNS real** (`runs/flygpt-v0-fullcns/cns_full/real_seed1`, checkpoint `checkpoints/flygpt-v0-fullcns/cns_full/real_seed1.pt`):
-1. Generate from the best checkpoint (see §6 snippet) and look at it; note the best val and step in `notes/decisions.md`.
-2. Export and publish to the Hub as a subfolder of QuixiAI/FlyGPT:
-   `python export_hf.py --ckpt checkpoints/flygpt-v0-fullcns/cns_full/real_seed1.pt --out /tmp/hf_cns --name QuixiAI/FlyGPT`
-   then `HfApi().upload_folder(folder_path="/tmp/hf_cns", repo_id="QuixiAI/FlyGPT", path_in_repo="full-cns")`.
-   Edit the exported README's `from_pretrained(...)` lines to pass `subfolder="full-cns"` before uploading.
-   The card's result section only renders for `cb5k`; for the CNS model add a short paragraph by hand:
-   N, E, best val, and that it is one seed with one control (no five-seed claim).
-3. Update README.md "Status" and commit.
+Partial runs leave a usable `log.jsonl` and a best-val checkpoint; `evaluate.py` ignores them unless given
+`--include-partial`.
 
-**Whole-CNS scrambled**: compute the single paired Δ (best and final) by reading both `log.jsonl`; record it in
-`notes/decisions.md` as a dev look ("one seed; the §12 rule needs five"). Do not word it as a result.
+## 5. What to do when each remaining job lands
 
-**FrozenFly ×3**: `python evaluate.py configs/launch_100k.yaml` adds the `frozen` row (reservoir, adapters only:
-the fly-llm-hf idea at 5k). Commit `results/`. Log the row in `notes/decisions.md`.
+**cb10k pair** (both seeds, 100k steps): `python evaluate.py configs/scale_10k.yaml`,
+`python plot.py configs/scale_10k.yaml --out results/val_loss_cb10k.png`, compute the one paired Δ from the two
+`log.jsonl` files, and log it in `notes/decisions.md` as the second rung of the §14 scaling ladder. Then
+finalize the cb10k row in `conclusions.md` §5, which is currently marked provisional. Note the expectation
+being tested: cb10k looked *worse* than cb5k mid-run, consistent with the §5 conclusion that context and data
+bind rather than capacity.
 
-**cb10k pair**: `python evaluate.py configs/scale_10k.yaml`, `python plot.py configs/scale_10k.yaml --out results/val_loss_cb10k.png`,
-one paired Δ, log as the second rung of the §14 scaling ladder (5k → 10k → whole CNS). Commit.
+**Whole-CNS scrambled**: compute the single paired Δ against the real run (best and final val) and record it in
+`notes/decisions.md` as a dev look, with the words "one seed; the §12 rule needs five". Do not word it as a
+result. Optionally publish it to `QuixiAI/FlyGPT` under `full-cns-scrambled/` following the pattern used for
+`full-cns` (hand-written result note, since the five-seed section only renders for cb5k).
 
-**After everything**: regenerate `results/scoreboard.md`, update README "Status", push. Consider a scaling-ladder
-plot (best val vs neurons: 5k, 10k, 160k) in `plot.py` or a small script; commit it under `results/`.
+**Then**: regenerate `results/scoreboard.md`, update README "Status", push. A scaling-ladder plot (best val vs
+neuron count across 5k / 10k / 160k) would finish the §14 story and is not yet written.
 
 ## 6. How to run things
 
