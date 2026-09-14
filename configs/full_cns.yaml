@@ -55,8 +55,8 @@ training:
   sparse_precision: fp32
   adapter_precision: bf16
   batch_size: 32
-  steps: 50000                # 11M params on 1.0M chars overfits well before 100k; best-val checkpoint is kept
-  eval_every: 500
+  steps: 12500                # data-parallel on 8 GPUs: global batch 256 → 205M chars (~200 epochs); best-val checkpoint kept
+  eval_every: 125
 
 evaluation:
   seeds_dev: [1]

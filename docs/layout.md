@@ -22,6 +22,7 @@ flygpt/
 ├── visualize.py                 # §17 static activity raster (sampled neurons, explanatory only)
 ├── export_hf.py                 # FlyGPT graph/checkpoint -> Hugging Face repo (safetensors bf16 + trust_remote_code)
 ├── scripts/launch_cb5k.sh       # detached per-GPU queues for real + degree_preserving × seeds 1–5
+├── scripts/launch_cns_ddp.sh    # whole-CNS: waits for gate + free GPUs, then torchrun DDP on all GPUs, real then scrambled
 ├── hf/                          # self-contained HF model code copied into exported repos
 │   ├── configuration_flygpt.py, modeling_flygpt.py     # FlyGPTForCausalLM (state carried instead of a KV cache)
 │   └── configuration_malecns.py, modeling_malecns.py   # MaleCNSConnectome: lossless connectome tensors + subset masks
