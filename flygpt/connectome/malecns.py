@@ -44,5 +44,10 @@ def load_candidate_pool(cfg: GraphConfig):
         cand = neurons["body_id"].to_numpy(np.int64)
     else:
         raise ValueError(f"unknown region_filter {cfg.region_filter!r}")
+    if cfg.status_filter:
+        if "status" not in neurons.columns:
+            raise ValueError("status_filter requested but neurons.parquet has no 'status' column")
+        ok = neurons.loc[neurons["status"].astype("string") == cfg.status_filter, "body_id"].to_numpy(np.int64)
+        cand = np.intersect1d(cand, ok)
     return (edges["src"].to_numpy(np.int64), edges["dst"].to_numpy(np.int64),
             edges["weight"].to_numpy(np.float32), cand, regions)

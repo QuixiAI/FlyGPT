@@ -1,0 +1,67 @@
+# plan.md §10 / §16 step 14: the whole nervous system. Every traced neuron in the largest strongly connected
+# component of the min-3-synapse graph (target_neurons exceeds the SCC, so no core pruning or trimming is applied:
+# the graph IS the SCC). Same model, same training loop, same gates as launch.yaml; I/O sets scaled with N.
+project: flygpt-v0-fullcns
+graph_name: cns_full
+
+dataset:
+  name: tiny_shakespeare
+  path: data/shakespeare/input.txt
+  split: 0.90
+
+graph:
+  source: malecns-v1.0
+  edges_path: data/fly/edges.parquet
+  neurons_path: data/fly/neurons.parquet
+  region_filter: whole_cns
+  status_filter: Traced
+  target_neurons: 200000        # > any SCC: keep the whole strongly connected traced nervous system
+  min_synapses: 3
+  selector: directed_core
+  retain_largest_scc: true
+
+controls:
+  - real
+  - degree_preserving
+
+interface:
+  input_nodes: 2048             # top out-degree; 5k used 256/512, scaled ~8x with N
+  input_rule: top_out_degree
+  output_nodes: 4096
+  output_rule: top_in_degree
+
+model:
+  state_dim_per_neuron: 1
+  activation: tanh
+  learned_leak: true
+  leak_init: 0.5
+  degree_normalization: true
+  embed_dim: 32
+  init_scale: 1.0
+
+sequence:
+  context: 64
+  microsteps: 2
+
+gate:
+  min_reachable_fraction: 0.95
+  max_p90_chars: 3
+
+training:
+  optimizer: adamw
+  recurrent_lr: 0.0003
+  adapter_lr: 0.001
+  grad_clip: 1.0
+  sparse_precision: fp32
+  adapter_precision: bf16
+  batch_size: 32
+  steps: 100000
+  eval_every: 500
+
+evaluation:
+  seeds_dev: [1]
+  seeds_claim: [1, 2, 3, 4, 5]
+  paired_seeds: true
+  claim_rule: {all_paired_diffs_same_sign: true, min_mean_diff_nats: 0.05}
+  prompts: ["ROMEO:", "KING:", "JULIET:", "First Citizen:"]
+  generation_fractions: [0.0, 0.1, 0.25, 0.5, 0.75, 1.0]

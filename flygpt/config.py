@@ -24,6 +24,7 @@ class GraphConfig:
     edges_path: str = "data/fly/edges.parquet"
     neurons_path: str = "data/fly/neurons.parquet"
     region_filter: str = "central_brain"
+    status_filter: str | None = None    # e.g. "Traced": keep only bodies with this proofreading status (whole-CNS pools)
     target_neurons: int = 5000
     min_synapses: int = 3
     selector: str = "directed_core"

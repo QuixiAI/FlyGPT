@@ -8,7 +8,9 @@ flygpt/
 ├── pyproject.toml
 ├── configs/
 │   ├── launch.yaml              # §13 — the one launch config, no grid
-│   └── dev_1k.yaml              # §15 "1k overfits an excerpt" gate; differs only in size/corpus/length
+│   ├── dev_1k.yaml              # §15 "1k overfits an excerpt" gate; differs only in size/corpus/length
+│   ├── launch_100k.yaml         # launch.yaml with 100k steps (full training of the 5k model)
+│   └── full_cns.yaml            # §10/§16-14: every traced neuron in the largest SCC (~160k neurons, 10.4M edges)
 │
 ├── prepare_data.py              # §2  download, hash, fix 90/10 split, measure unigram/bigram  -> data/shakespeare/split.json
 ├── build_graph.py               # §3-6 extract dense core, build every control × seed, degree I/O, diagnostics, path gate
