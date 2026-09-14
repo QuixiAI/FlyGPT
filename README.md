@@ -43,7 +43,7 @@ character ──► embedding ──► linear ──► 256 input neurons (top 
   differences have the same sign and the mean difference is at least 0.05 nats/char. Otherwise the result is
   reported as "no detectable difference at this scale", which is also a result.
 
-The full specification is [`plan.md`](plan.md) (spec v4, frozen). Engineering decisions made after the freeze are
+Findings so far are written up in [`conclusions.md`](conclusions.md). The full specification is [`plan.md`](plan.md) (spec v4, frozen). Engineering decisions made after the freeze are
 logged in [`notes/decisions.md`](notes/decisions.md). The map from spec sections to files is
 [`docs/layout.md`](docs/layout.md).
 

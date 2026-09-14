@@ -4,7 +4,7 @@ Living document for an agent taking over this work. Updated at every milestone; 
 last update. Read it top to bottom before touching anything, then read `plan.md` (the frozen spec),
 `notes/decisions.md` (every engineering decision since the freeze, append-only), and `docs/layout.md`.
 
-**Last updated: 2026-09-14 02:54 UTC** (commit `cdbf55f` on `main`, pushed).
+**Last updated: 2026-09-14 03:25 UTC.** Read `conclusions.md` for the findings; this file is operational state only.
 
 ## 1. What this project is, in one paragraph
 
@@ -35,6 +35,10 @@ Citation keys: `hartford2026malecns` (data), `berg2026malecns` (paper), `hartfor
   lead was a learning-speed effect.
 - **Baselines** (~578k params, 3 seeds, 100k steps): best val GRU 1.522, transformer 1.548, RNN 1.581, fly 1.587;
   all dense baselines overfit hard afterwards (final 1.72–2.05), the fly does not (final 1.609).
+- **FrozenFly reservoir** (adapters only, 43,873 trainable params): best val 1.854 / 1.862 / 1.905 (seed 3 mid-run).
+  Trainable edges are worth 0.28 nats over the same wiring frozen.
+- **Regional segregation** (whole-CNS graph): 76.7% of real edges stay within one region vs 30.2% scrambled;
+  1,765 direct optic-to-central-brain edges vs 1,455,916 scrambled. Measured, in `conclusions.md` §4.
 - Reference losses on our split: unigram 3.347, bigram 2.482 (`data/shakespeare/split.json`).
 
 ## 4. Running right now (2026-09-14 02:54 UTC)
