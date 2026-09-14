@@ -7,8 +7,10 @@ Dynamics (one scalar state per neuron, plan.md §7 of the FlyGPT spec):
     h_i_new    = (1 - leak_i) * h_i + leak_i * proposal_i
 
 The connectome is stored in `model.safetensors` as integer tensors (`graph.*`); only the learned
-per-edge values and the adapters are floating point (bf16 on disk). The sparse recurrent matmul is
-rebuilt in fp32 at runtime (rows = destination, columns = source).
+per-edge values and the adapters are floating point (bf16 on disk). The sparse recurrent matmul runs
+in fp32: through the fused kernels of the `connectome-kernels` package when it is installed and a
+CUDA device is used (training speed), else through torch.sparse COO (rows = destination). Both give
+the same logits and gradients.
 """
 from __future__ import annotations
 
@@ -133,17 +135,50 @@ class FlyGPTForCausalLM(FlyGPTPreTrainedModel, GenerationMixin):
     def logits_from_state(self, state: torch.Tensor) -> torch.Tensor:
         return self.lm_head(state[:, self.graph.output_nodes].to(self.lm_head.weight.dtype)).float()
 
+    # ---- fused CUDA path via the connectome-kernels package (optional, used for training) ------------
+    def _fused_graph(self):
+        from connectome_kernels import SparseGraph
+        dev = self.graph.edge_index.device
+        if getattr(self, "_fg", None) is None or self._fg_device != dev:
+            self._fg = SparseGraph(self.graph.edge_index[0].long(), self.graph.edge_index[1].long(), self.num_neurons,
+                                   self.graph.input_nodes)
+            self._fg_device = dev
+        return self._fg
+
+    def _fused_available(self, device) -> bool:
+        if device.type != "cuda":
+            return False
+        if not hasattr(self, "_fused_ok"):
+            try:
+                from connectome_kernels import available
+                self._fused_ok = available()
+            except Exception:
+                self._fused_ok = False
+        return self._fused_ok
+
+    def _forward_fused(self, input_ids, state):
+        from connectome_kernels import sparse_recurrence
+        drives = self.input_proj(self.embed(input_ids)).float().permute(1, 2, 0).contiguous()       # [T, n_in, B]
+        vals = self.recurrent.edge_values.float() * self.edge_scale()
+        out = sparse_recurrence(vals, self.leak, self.recurrent.bias.float(), drives, state,
+                                self._fused_graph(), self.config.microsteps)                         # [T, B, N]
+        logits = self.lm_head(out[:, :, self.graph.output_nodes].to(self.lm_head.weight.dtype)).float().permute(1, 0, 2)
+        return logits, out[-1]
+
     def forward(self, input_ids: torch.LongTensor, state: Optional[torch.Tensor] = None,
                 labels: Optional[torch.LongTensor] = None, use_cache: Optional[bool] = None,
                 return_dict: Optional[bool] = None, **kwargs) -> FlyGPTOutput:
         B, T = input_ids.shape
         state = self.init_state(B, input_ids.device) if state is None else state
-        W = self.sparse_weight()
-        outs = []
-        for t in range(T):
-            state = self.step(state, input_ids[:, t], W)
-            outs.append(self.logits_from_state(state))
-        logits = torch.stack(outs, 1)
+        if self._fused_available(input_ids.device):
+            logits, state = self._forward_fused(input_ids, state)
+        else:
+            W = self.sparse_weight()
+            outs = []
+            for t in range(T):
+                state = self.step(state, input_ids[:, t], W)
+                outs.append(self.logits_from_state(state))
+            logits = torch.stack(outs, 1)
         loss = None
         if labels is not None:
             loss = F.cross_entropy(logits[:, :-1].reshape(-1, logits.shape[-1]), labels[:, 1:].reshape(-1))

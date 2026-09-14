@@ -93,7 +93,7 @@ def export(model, cfg: Config, vocab: CharVocab, graph, condition: str, seed: in
 
     build_char_tokenizer(vocab.chars).save(str(out / "tokenizer.json"))
     (out / "tokenizer_config.json").write_text(json.dumps({
-        "tokenizer_class": "PreTrainedTokenizerFast", "model_max_length": 1_000_000,
+        "tokenizer_class": "PreTrainedTokenizerFast", "model_max_length": 10_000_000,
         "clean_up_tokenization_spaces": False, "add_prefix_space": False}, indent=2))
     (out / "README.md").write_text(model_card(name, config, graph_meta, training_state, tensors))
     sizes = {k: f"{tuple(v.shape)} {str(v.dtype).replace('torch.', '')}" for k, v in tensors.items()}
@@ -101,7 +101,33 @@ def export(model, cfg: Config, vocab: CharVocab, graph, condition: str, seed: in
                       "safetensors_mb": round((out / "model.safetensors").stat().st_size / 1e6, 2)}, indent=2))
 
 
+def result_section() -> str:
+    """The five-seed paired result from results/claim_degree_preserving.json, worded exactly as claim.py prints it."""
+    p = Path("results/claim_degree_preserving.json")
+    if not p.exists():
+        return ""
+    d = json.loads(p.read_text()); rows = d["paired"]["rows"]; v = d["verdict"]
+    table = "\n".join(f"| {r['seed']} | {r['real']:.4f} | {r['control']:.4f} | {r['delta']:+.4f} |" for r in rows)
+    return f"""## Result: does the wiring matter?
+
+Pre-registered rule (before any result was seen): "wiring matters" is claimed only if all {v['n_required']} paired
+differences Δ = loss(scrambled) − loss(real) have the same sign **and** the mean Δ is at least {v['min_mean_diff_nats']} nats/char.
+
+| seed | real | degree-preserving scramble | Δ |
+|--:|--:|--:|--:|
+{table}
+| **mean** | **{d['paired']['mean_real']:.4f}** | **{d['paired']['mean_control']:.4f}** | **{d['paired']['mean_delta']:+.4f}** |
+
+Validation loss in nats/char at the end of 20,000 steps, same data order, batches, adapter init and edge-value RNG
+stream per seed. Bigram reference on this split: 2.482. All five differences favour the real wiring, but the mean
+gap is below the pre-registered minimum effect, so the verdict is: **{v['verdict']}.** The fly connectome learns
+Shakespeare; whether its specific wiring helps, beyond its degree sequence, is not resolved at 5,000 neurons.
+
+"""
+
+
 def model_card(name: str, config: dict, gm: dict, ts: dict, tensors: dict) -> str:
+    result_section_text = result_section() if ts.get("status") == "trained" and gm.get("graph_name") == "cb5k" else ""
     st = gm.get("stats", {})
     d = gm.get("diagnostics", {}).get("diagnostics", {})
     prov = gm.get("diagnostics", {}).get("provenance", {})
@@ -188,23 +214,78 @@ h_i ← (1 − leak_i) h_i + leak_i · proposal_i        ({config['microsteps']}
 {config['num_output_neurons']} output neuron states → linear → {config['vocab_size']} logits
 ```
 
-## Usage
+## Inference
 
 ```python
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-tok = AutoTokenizer.from_pretrained("{name}")
-model = AutoModelForCausalLM.from_pretrained("{name}", trust_remote_code=True, dtype=torch.float32)
+tok = AutoTokenizer.from_pretrained("QuixiAI/FlyGPT")
+model = AutoModelForCausalLM.from_pretrained("QuixiAI/FlyGPT", trust_remote_code=True, dtype=torch.float32)
 
 ids = tok("ROMEO:", return_tensors="pt").input_ids
 out = model.generate(ids, max_new_tokens=300, do_sample=True, temperature=0.8)
 print(tok.decode(out[0]))
+
+# The degree-preserving scrambled control (same neurons, same degrees, shuffled wiring), for comparison:
+scrambled = AutoModelForCausalLM.from_pretrained("QuixiAI/FlyGPT", subfolder="scrambled", trust_remote_code=True, dtype=torch.float32)
+print(tok.decode(scrambled.generate(ids, max_new_tokens=300, do_sample=True, temperature=0.8)[0]))
+
+# Neuron activity, for visualization: [1, T, 5000] states after each character, plus MaleCNS body ids
+with torch.no_grad():
+    states = model(ids).state                                   # [B, N] after the last character
+body_ids = model.graph.node_id                                  # index -> MaleCNS body id, for lookup in QuixiAI/MaleCNS
 ```
 
-The tokenizer is strict: only the 65 characters of Tiny Shakespeare are encodable.
+The tokenizer is strict: only the 65 characters of Tiny Shakespeare are encodable. `generate()` carries the neuron
+state between characters instead of a KV cache.
 
-## Citation
+## Training
+
+The recurrent core has one trainable weight per real synaptic connection. With the
+[connectome-kernels](https://github.com/QuixiAI/connectome-kernels) package installed, the model's forward pass
+runs on fused CUDA kernels (about 13× faster than `torch.sparse`, identical gradients); without it, it falls back
+to `torch.sparse` automatically.
+
+```python
+# Fine-tune / continue training FlyGPT on Tiny Shakespeare (character-level).
+# pip install transformers safetensors
+# pip install --no-build-isolation git+https://github.com/QuixiAI/connectome-kernels   # fused CUDA path, ~13x faster
+import requests, torch, torch.nn.functional as F
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+tok = AutoTokenizer.from_pretrained("QuixiAI/FlyGPT")
+model = AutoModelForCausalLM.from_pretrained("QuixiAI/FlyGPT", trust_remote_code=True, dtype=torch.float32).cuda()
+# start from the untrained initialization instead:  subfolder="init"
+
+text = requests.get("https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt").text
+data = torch.tensor(tok(text).input_ids)
+train, val = data[: int(0.9 * len(data))], data[int(0.9 * len(data)):]   # FlyGPT's fixed 90/10 split
+
+def batch(split, B=32, T=64):
+    i = torch.randint(0, len(split) - T - 1, (B,))
+    x = torch.stack([split[j : j + T] for j in i]); y = torch.stack([split[j + 1 : j + T + 1] for j in i])
+    return x.cuda(), y.cuda()
+
+recurrent = list(model.recurrent.parameters())                         # one weight per real synapse, bias, leak
+adapters = [p for n, p in model.named_parameters() if not n.startswith("recurrent.")]
+opt = torch.optim.AdamW([{{"params": adapters, "lr": 1e-3}}, {{"params": recurrent, "lr": 3e-4}}], weight_decay=0.01)
+
+for step in range(1, 501):
+    x, y = batch(train)
+    logits = model(x).logits                                           # [B, T, 65]; state resets to zero per window
+    loss = F.cross_entropy(logits.reshape(-1, 65), y.reshape(-1))
+    opt.zero_grad(set_to_none=True); loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0); opt.step()
+    if step % 100 == 0:
+        with torch.no_grad():
+            vx, vy = batch(val); vl = F.cross_entropy(model(vx).logits.reshape(-1, 65), vy.reshape(-1))
+        print(f"step {{step}}  train {{loss.item():.3f}}  val {{vl.item():.3f}}")
+
+model.save_pretrained("flygpt-finetuned"); tok.save_pretrained("flygpt-finetuned")
+```
+
+{result_section_text}## Citation
 
 If you use this model, please cite it, its base model, and the MaleCNS dataset paper.
 
