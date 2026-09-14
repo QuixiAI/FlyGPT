@@ -3,6 +3,7 @@ name = "flygpt"
 version = "0.0.1"
 description = "A language model whose recurrent core is the fruit-fly connectome."
 requires-python = ">=3.10"
+license = "MIT"
 dependencies = [
     "torch>=2.2",
     "numpy>=1.26",

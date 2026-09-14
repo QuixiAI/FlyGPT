@@ -114,7 +114,7 @@ control that preserves both in- and out-degree, under a pre-registered five-seed
 
 ## License and citation
 
-The code has no license file yet (to be chosen before release). The connectome is MaleCNS v1.0, released under
+Code is MIT-licensed (see LICENSE). The connectome is MaleCNS v1.0, released under
 **CC-BY 4.0** by the FlyEM Project Team (HHMI Janelia), the University of Cambridge (Dept. of Zoology), the
 MRC Laboratory of Molecular Biology, and Google Research. If you use FlyGPT's graph or checkpoints, cite the
 connectome packaging and the dataset paper:
