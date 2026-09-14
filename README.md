@@ -60,10 +60,17 @@ bigram reference losses are committed in `data/shakespeare/split.json`.
 
 ## Status
 
-- Data, graph extraction, controls, diagnostics, and every pre-training gate: **done on real data**. The 5k
-  launch graph and its five degree-preserving controls pass all gates.
-- 5k training (real vs degree-preserving, five paired seeds): **not yet run**.
-- Results, plots, and the claim: none yet. Nothing in this README or the model cards claims a result.
+- Data, graph extraction, controls, diagnostics, every pre-training gate: **done on real data.**
+- **5k launch, five paired seeds, 100k steps: done.** Validation loss 1.609 nats/char (real) vs 1.613 (degree-preserving
+  scramble), bigram reference 2.482. Paired differences +0.008, +0.011, +0.003, −0.002, −0.004. Under the
+  pre-registered rule the verdict is **no detectable difference at this scale**: the fly connectome learns
+  Shakespeare, and at 5,000 neurons its specific wiring does not measurably beat a degree-matched scramble.
+  At 20k steps the real wiring led on all five seeds by 0.011 nats; that edge is a learning-speed effect that
+  disappears with full training. Numbers and plots: `results/`, checkpoints on the Hub:
+  [QuixiAI/FlyGPT](https://huggingface.co/QuixiAI/FlyGPT).
+- **Whole nervous system** (160,514 traced neurons, 10.4M connections, `configs/full_cns.yaml`): graph built, all
+  gates pass, training in progress on 6 GPUs with data parallelism.
+- Parameter-matched baselines (RNN, GRU, transformer): in progress.
 
 ## Quickstart
 
