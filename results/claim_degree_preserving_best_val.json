@@ -1,0 +1,54 @@
+{
+  "paired": {
+    "real": "real",
+    "control": "degree_preserving",
+    "metric": "best_val",
+    "rows": [
+      {
+        "seed": 1,
+        "real": 1.577788382768631,
+        "control": 1.5815802812576294,
+        "delta": 0.003791898488998413
+      },
+      {
+        "seed": 2,
+        "real": 1.5991613566875458,
+        "control": 1.6055684864521027,
+        "delta": 0.006407129764556929
+      },
+      {
+        "seed": 3,
+        "real": 1.5856609284877776,
+        "control": 1.5870736420154572,
+        "delta": 0.0014127135276795766
+      },
+      {
+        "seed": 4,
+        "real": 1.5885209739208221,
+        "control": 1.5974535584449767,
+        "delta": 0.008932584524154574
+      },
+      {
+        "seed": 5,
+        "real": 1.5834059774875642,
+        "control": 1.5845638275146485,
+        "delta": 0.0011578500270843506
+      }
+    ],
+    "mean_real": 1.5869075238704682,
+    "mean_control": 1.5912479591369628,
+    "mean_delta": 0.004340435266494769,
+    "min_delta": 0.0011578500270843506,
+    "max_delta": 0.008932584524154574
+  },
+  "verdict": {
+    "n_seeds": 5,
+    "n_required": 5,
+    "all_same_sign": true,
+    "mean_delta": 0.004340435266494769,
+    "min_mean_diff_nats": 0.05,
+    "passed": false,
+    "direction": null,
+    "verdict": "no detectable difference at this scale"
+  }
+}

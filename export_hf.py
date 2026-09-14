@@ -82,7 +82,7 @@ def export(model, cfg: Config, vocab: CharVocab, graph, condition: str, seed: in
         "num_input_neurons": int(sd["input_nodes"].numel()), "num_output_neurons": int(sd["output_nodes"].numel()),
         "microsteps": cfg.sequence.microsteps, "activation": cfg.model.activation, "learned_leak": cfg.model.learned_leak,
         "leak_init": cfg.model.leak_init, "degree_normalization": cfg.model.degree_normalization,
-        "init_scale": cfg.model.init_scale, "dtype": "bfloat16",
+        "init_scale": cfg.model.init_scale, "dtype": "bfloat16", "training_steps": cfg.training.steps,
         "graph": {k: graph_meta[k] for k in ("graph_name", "condition", "control_seed", "source", "region_filter", "min_synapses", "hash")},
         "training_state": training_state,
     }
@@ -101,7 +101,7 @@ def export(model, cfg: Config, vocab: CharVocab, graph, condition: str, seed: in
                       "safetensors_mb": round((out / "model.safetensors").stat().st_size / 1e6, 2)}, indent=2))
 
 
-def result_section() -> str:
+def result_section(steps: int) -> str:
     """The five-seed paired result from results/claim_degree_preserving.json, worded exactly as claim.py prints it."""
     p = Path("results/claim_degree_preserving.json")
     if not p.exists():
@@ -118,16 +118,17 @@ differences Δ = loss(scrambled) − loss(real) have the same sign **and** the m
 {table}
 | **mean** | **{d['paired']['mean_real']:.4f}** | **{d['paired']['mean_control']:.4f}** | **{d['paired']['mean_delta']:+.4f}** |
 
-Validation loss in nats/char at the end of 20,000 steps, same data order, batches, adapter init and edge-value RNG
-stream per seed. Bigram reference on this split: 2.482. All five differences favour the real wiring, but the mean
-gap is below the pre-registered minimum effect, so the verdict is: **{v['verdict']}.** The fly connectome learns
-Shakespeare; whether its specific wiring helps, beyond its degree sequence, is not resolved at 5,000 neurons.
+Validation loss in nats/char at the end of {steps:,} steps, same data order, batches, adapter init and edge-value RNG
+stream per seed. Bigram reference on this split: 2.482. {"All five differences favour the real wiring, but the mean gap is below the pre-registered minimum effect" if v['all_same_sign'] else "The differences are small and not all of the same sign"}, so the
+verdict is: **{v['verdict']}.** The fly connectome learns Shakespeare; at 5,000 neurons its specific wiring does not
+measurably beat a degree-matched scramble. (At 20,000 steps the real wiring led on all five seeds by a mean of
+0.011 nats; with full training the scramble catches up, so that early edge is a learning-speed effect.)
 
 """
 
 
 def model_card(name: str, config: dict, gm: dict, ts: dict, tensors: dict) -> str:
-    result_section_text = result_section() if ts.get("status") == "trained" and gm.get("graph_name") == "cb5k" else ""
+    result_section_text = result_section(config["training_steps"]) if ts.get("status") == "trained" and gm.get("graph_name") == "cb5k" else ""
     st = gm.get("stats", {})
     d = gm.get("diagnostics", {}).get("diagnostics", {})
     prov = gm.get("diagnostics", {}).get("provenance", {})
