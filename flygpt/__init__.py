@@ -42,7 +42,8 @@ def build_model(cfg: Config, condition: str, seed: int, vocab_size: int):
     if condition in ("rnn", "gru", "transformer"):
         torch.manual_seed(seed)
         hidden = match_hidden(condition, vocab_size, _fly_param_target(cfg, seed, vocab_size))
-        return build_baseline(condition, vocab_size, hidden, max_context=max(cfg.sequence.context, 256)), {"condition": condition, "hidden": hidden}
+        model = build_baseline(condition, vocab_size, hidden, max_context=max(cfg.sequence.context, 256))
+        return model, {"condition": condition, "hidden": hidden, "params": model.parameter_counts()}
     g, inp, out, meta = load_condition(cfg, condition, seed)
     torch.manual_seed(seed)
     if condition == "frozen":

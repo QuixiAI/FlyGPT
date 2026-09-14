@@ -16,6 +16,7 @@ from flygpt.analysis import read_run
 ap = argparse.ArgumentParser()
 ap.add_argument("config", nargs="?", default="configs/launch.yaml")
 ap.add_argument("--metric", default="final_val", choices=["final_val", "best_val"], help="metric for the primary column")
+ap.add_argument("--include-partial", action="store_true", help="also list runs that have not reached the configured step count")
 args = ap.parse_args()
 cfg = Config.load(args.config)
 root = Path("runs") / cfg.project / cfg.graph_name
@@ -28,8 +29,16 @@ for d in sorted(root.glob("*_seed*")):
     cond, seed = d.name.rsplit("_seed", 1)
     try:
         r = read_run(d)
+        if r["steps"] < cfg.training.steps and not args.include_partial:
+            continue
         by_cond[cond].append((int(seed), r["final_val"], r["best_val"], r["steps"]))
-        p = json.loads((d / "meta.json").read_text()).get("params", {})
+        meta = json.loads((d / "meta.json").read_text())
+        p = meta.get("params", {})
+        if not isinstance(p, dict) or "total" not in p:
+            if "hidden" in meta:  # baseline runs written before params were recorded
+                from flygpt.baselines import build_baseline
+                p = build_baseline(cond, len(json.loads(split.read_text())["vocab"]) if split.exists() else 65, meta["hidden"],
+                                   max_context=max(cfg.sequence.context, 256)).parameter_counts()
         params[cond] = p.get("total", "-") if isinstance(p, dict) else "-"
     except (ValueError, FileNotFoundError):
         pass
