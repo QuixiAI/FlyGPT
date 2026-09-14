@@ -1,0 +1,37 @@
+{
+  "candidate_pool": 164587,
+  "candidate_edges": 25563096,
+  "min_synapses": 3,
+  "target_neurons": 200000,
+  "edges_after_threshold": 10510984,
+  "scc_after_threshold": 160514,
+  "note": "SCC no larger than target; no pruning or trimming applied",
+  "core_k": 0,
+  "final_neurons": 160514,
+  "final_edges": 10402842,
+  "source": "malecns-v1.0",
+  "n_neurons": 160514,
+  "n_edges": 10402842,
+  "synaptic_contacts": 102352176.0,
+  "largest_scc_fraction": 1.0,
+  "reciprocal_pairs": 1006326,
+  "in_degree": {
+    "mean": 64.80956178277285,
+    "min": 1,
+    "max": 9193
+  },
+  "out_degree": {
+    "mean": 64.80956178277285,
+    "min": 1,
+    "max": 7749
+  },
+  "density": 0.00040376518900508274,
+  "hash": "d53f26f9bf6f7b8c9944e28fdd4721d2c0a237e7534f9160977c70e6c81ac6c2",
+  "region_breakdown": {
+    "optic_lobe": 91082,
+    "central_brain": 36625,
+    "vnc": 19300,
+    "other": 13454,
+    "unannotated": 53
+  }
+}

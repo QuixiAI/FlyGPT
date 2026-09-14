@@ -37,7 +37,7 @@ model:
   leak_init: 0.5
   degree_normalization: true
   embed_dim: 32
-  init_scale: 1.0
+  init_scale: 0.65              # spectral radius ≈ 0.85–1.04 at init on this graph (1.0 gave 1.6; decisions.md)
 
 sequence:
   context: 64
@@ -55,7 +55,7 @@ training:
   sparse_precision: fp32
   adapter_precision: bf16
   batch_size: 32
-  steps: 100000
+  steps: 50000                # 11M params on 1.0M chars overfits well before 100k; best-val checkpoint is kept
   eval_every: 500
 
 evaluation:

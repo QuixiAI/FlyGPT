@@ -1,0 +1,9 @@
+source: malecns-v1.0
+edges_path: data/fly/edges.parquet
+neurons_path: data/fly/neurons.parquet
+region_filter: whole_cns
+status_filter: Traced
+target_neurons: 200000
+min_synapses: 3
+selector: directed_core
+retain_largest_scc: true
