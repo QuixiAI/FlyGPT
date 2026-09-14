@@ -6,7 +6,9 @@ Same data, same split, same context, same training loop for every row.
 Measured on our split: unigram 3.347, bigram 2.482.
 External reference: nanoGPT `train_shakespeare_char` best val ~1.47 (verify + cite at launch).
 
-| Model | Params | Val loss (mean) | Range | Seeds | Notes |
-|---|--:|--:|---|--:|---|
-| degree_preserving | 578,197 | 1.613 | 1.606–1.630 | 5 | |
-| real | 578,197 | 1.609 | 1.603–1.619 | 5 | |
+| Model | Params | Final val (mean) | Range | Best val (mean) | Range | Seeds | Notes |
+|---|--:|--:|---|--:|---|--:|---|
+| degree_preserving | 578,197 | 1.613 | 1.606–1.630 | 1.591 | 1.582–1.606 | 5 | same neurons/degrees, wiring scrambled |
+| gru | - | 1.558 | 1.534–1.582 | 1.519 | 1.508–1.530 | 2 | GRU, parameter-matched |
+| real | 578,197 | 1.609 | 1.603–1.619 | 1.587 | 1.578–1.599 | 5 | real fly wiring, edges trained |
+| rnn | - | 2.021 | 2.016–2.026 | 1.578 | 1.574–1.582 | 2 | dense tanh RNN, parameter-matched; overfits after its best step |
