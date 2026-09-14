@@ -7,6 +7,7 @@ flygpt/
 ├── plan.md                      # spec v4 (frozen); README.md is the project front page
 ├── handoff.md                   # living handoff for another agent: state, running jobs, what to do next, rules
 ├── conclusions.md               # what we found and did not find; every number traced to results/ or graphs/
+├── plan_v1.md                   # v1 spec (draft): multi-task interference on the whole connectome
 ├── pyproject.toml
 ├── configs/
 │   ├── launch.yaml              # §13 — the one launch config, no grid

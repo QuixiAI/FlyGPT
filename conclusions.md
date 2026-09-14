@@ -147,6 +147,9 @@ biological input and output placement (sensory in, descending out) instead of de
 fair: scrambling preserves the neurons and their anatomical labels, so "optic lobe input neurons" denotes the
 identical set in both conditions.
 
+It is specified in [`plan_v1.md`](plan_v1.md), on the whole connectome, with a third control that keeps the
+fly's regional block structure but randomizes wiring inside it.
+
 Also open, from `plan.md` §10 and §14: longer context, synapse-count initialization, a neurotransmitter sign
 constraint, a microstep sweep, and finishing the scaling ladder.
 

@@ -149,6 +149,11 @@ seed on the 10.4M-edge graph (a batched GPU version is a known TODO, see decisio
 
 ## 9. Open items / next steps beyond the running jobs
 
+**`plan_v1.md` is the proposed next experiment** (multi-task interference on the whole connectome, three
+conditions, pre-registered forgetting rule). It is a draft: §14 lists what the user must settle before it
+freezes, and build-order step 1 (batched GPU rewire) is a prerequisite. Do not start spending its 67-hour
+budget without the 1-seed dev look clearing its gate.
+
 1. Publish the whole-CNS model (see §5) and write up the scaling ladder 5k → 10k → 160k.
 2. Whole-CNS five paired seeds if the wiring question is pursued at that scale (needs the batched rewire first).
 3. Follow-ups listed in `plan.md` §10/§14: context 128/256, min_synapses {1,5}, microstep sweep {1,4},
