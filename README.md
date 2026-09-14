@@ -125,6 +125,7 @@ connectome packaging and the dataset paper:
   author       = {Hartford, Eric},
   year         = {2026},
   publisher    = {Hugging Face},
+  doi          = {10.57967/hf/10410},
   howpublished = {\url{https://huggingface.co/QuixiAI/MaleCNS}},
   note         = {Repackaging of Berg et al. (2026), CC-BY 4.0}
 }
