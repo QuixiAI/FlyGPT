@@ -15,7 +15,7 @@ until [ -f "$GRAPH/gate.json" ]; do sleep 60; done
 if ! python -c "import json,sys; g=json.load(open('$GRAPH/gate.json')); sys.exit(0 if g.get('real') and g.get('degree_preserving_seed1') else 1)"; then
   echo "$(date -u +%FT%TZ) $GRAPH gate FAILED; not training" >> "$LOG/queue.log"; exit 1
 fi
-while pgrep -f "train.py configs/launch_100k" > /dev/null; do sleep 60; done
+# GPUs are pinned by the caller via CUDA_VISIBLE_DEVICES; no wait for other runs
 for c in real degree_preserving; do
   echo "$(date -u +%FT%TZ) starting cns $c on $NGPU GPUs" >> "$LOG/queue.log"
   torchrun --nproc_per_node "$NGPU" --master_port 29601 train.py "$CFG" --condition "$c" --seed 1 > "$LOG/cns_${c}_seed1.log" 2>&1

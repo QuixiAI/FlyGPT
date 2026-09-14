@@ -93,7 +93,7 @@ def main():
         cfg.training.steps = args.steps
     rank, world, local_rank = ddp_setup()
     device = pick_device(args.device, local_rank)
-    if device.type == "cuda":
+    if device.type == "cuda" and device.index is not None:
         torch.cuda.set_device(device)
     T = cfg.training
     main_rank = rank == 0
