@@ -293,6 +293,23 @@ x = torch.zeros(1, cns.num_neurons); x[0, 0] = 1.0
 incoming = cns(x)                                                # one propagation step with raw counts
 ```
 
+## Training on this graph
+
+The tensors above are the input format of [QuixiAI/connectome-kernels](https://github.com/QuixiAI/connectome-kernels),
+fused CUDA kernels for training a leaky-tanh recurrence with one trainable weight per edge on a fixed sparse graph
+(about 13× faster than `torch.sparse` on a 5k-neuron, 524k-edge subgraph, with identical gradients). What the edge
+values are initialized to, whether they carry a neurotransmitter sign, and how they are normalized are all decisions
+made at that layer, not in this repository.
+
+```python
+from connectome_kernels import SparseGraph, sparse_recurrence
+
+sub = cns.subgraph(cns.status_mask("Traced") & cns.subset_mask("central_brain"), min_synapses=3)
+graph = SparseGraph(sub["edge_src"].long().cuda(), sub["edge_dst"].long().cuda(), sub["neuron_id"].numel(), input_nodes)
+edge_values = torch.nn.Parameter(torch.randn(graph.E, device="cuda"))     # yours to initialize; sub["synapse_count"] is available
+out = sparse_recurrence(edge_values, leak, bias, drives, state0, graph, microsteps=2)   # [T, B, N], differentiable
+```
+
 ## Provenance
 
 Built by the script [`data/fly/export_malecns_hf.py`](https://github.com/QuixiAI/FlyGPT/blob/main/data/fly/export_malecns_hf.py) from these files in
